@@ -44,7 +44,6 @@ def append_csv(oldfile, newfile):
                 writer.writerow(row)
 
 def checkmissing(file='all_dailies.csv', dir='day_aggs'):
-    dir='testaggs'
     files = os.listdir(dir)
     filedates = [datetime.strptime(f.split('.')[0], '%Y-%m-%d').date() for f in files]
     most_recent_date = get_last_date(file)
@@ -61,3 +60,4 @@ if missingfiles is None: sys.exit("No missing files.")
 missing = merge_dailies(['day_aggs/'+f for f in missingfiles['filenames']])
 missing.to_csv(tempfile, mode='a', index=False)
 append_csv(filename, tempfile)
+print(f'{len(missingfiles)} files merged and appended to {filename}')
