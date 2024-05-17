@@ -3,6 +3,11 @@ import os
 import sys
 from botocore.config import Config
 from datetime import datetime
+from functions import datefromfilename
+
+if len(sys.argv) == 1: test = False
+else:
+    if sys.argv[1] == 'test': test = True
 
 session = boto3.Session(
     aws_access_key_id="1c407b86-9d98-4a01-bf59-3b45eed92548",
@@ -48,16 +53,18 @@ if len(missingfiles) == 0: sys.exit("No missing files.")
 
 print("Downloading...")
 
-for i in missingfiles:
-    localfilename = "day_aggs/" + i.split("/")[-1]
+if not test:
+    for i in missingfiles:
+        localfilename = "day_aggs/" + i.split("/")[-1]
 
-    try:
-        s3.download_file(bucket, i, localfilename)
-    except Exception as e:
-        print(e)
+        try:
+            s3.download_file(bucket, i, localfilename)
+        except Exception as e:
+            print(e)
 
 for i in missingfiles:
     print(i)
+
 print('______________________\n')
 first, last = datefromfilename(missingfiles[0]), datefromfilename(missingfiles[-1])
 print(f'Downloaded {len(missingfiles)} files between {first} and {last}')
