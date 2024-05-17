@@ -2,3 +2,4 @@
 day_aggs/*
 testaggs/*
 all_dailies.csv
+*.whl
