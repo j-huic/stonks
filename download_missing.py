@@ -56,4 +56,8 @@ for i in missingfiles:
     except Exception as e:
         print(e)
 
-print([i+'\n' for i in missingfiles])
+for i in missingfiles:
+    print(i)
+print('______________________\n')
+first, last = datefromfilename(missingfiles[0]), datefromfilename(missingfiles[-1])
+print(f'Downloaded {len(missingfiles)} files between {first} and {last}')
