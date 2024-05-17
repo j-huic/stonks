@@ -48,3 +48,16 @@ def checkmissing(file='all_dailies.csv', dir='day_aggs'):
     output = {'filenames': [t[0] for t in recentfiles], 'dates': [t[1] for t in recentfiles]}
 
     return output
+
+def datefromfilename(filename, datetime=False):
+    items = filename.split('/')
+    lastitem = items[-1]
+    datestring = lastitem.split('.')[0]
+    
+    if datetime:
+        return datetime.strptime(datestring, '%Y-%m-%d')
+    else:
+        return datestring
+    
+
+    

@@ -3,3 +3,8 @@ day_aggs/*
 testaggs/*
 all_dailies.csv
 *.whl
+*test.py
+*test.ipynb
+__pycache__/
+*.pyc
+*.db
