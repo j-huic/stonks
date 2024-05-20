@@ -5,7 +5,7 @@ all_dailies.csv
 *.whl
 *test.py
 *test.ipynb
-__pycache__/
+__pycache__/*
 *.pyc
 *.db
 diag.ipynb
