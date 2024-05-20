@@ -5,6 +5,8 @@ from botocore.config import Config
 from datetime import datetime
 from functions import datefromfilename
 
+before = datetime.now()
+
 if len(sys.argv) == 1: test = False
 else:
     if sys.argv[1] == 'test': test = True
@@ -49,7 +51,11 @@ most_recent_date_string = get_last_line("all_dailies.csv").split(",")[-1].strip(
 most_recent_date = datetime.date(datetime.strptime(most_recent_date_string, "%Y-%m-%d"))
 
 missingfiles = [i for i,j in zip(stonkfilenames, date) if j > most_recent_date]
-if len(missingfiles) == 0: sys.exit("No missing files.")
+
+if len(missingfiles) == 0: 
+    after = datetime.now()
+    print(f'Time taken: {after - before}')
+    sys.exit("No missing files.")
 
 print("Downloading...")
 
@@ -68,3 +74,6 @@ for i in missingfiles:
 print('______________________\n')
 first, last = datefromfilename(missingfiles[0]), datefromfilename(missingfiles[-1])
 print(f'Downloaded {len(missingfiles)} files between {first} and {last}')
+
+after = datetime.now()
+print(f'\nTime taken: {after - before}')
