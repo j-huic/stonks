@@ -2,14 +2,15 @@ import boto3
 import os
 import sys
 from botocore.config import Config
-from datetime import datetime
+from datetime import datetime, timedelta
 from functions import datefromfilename
 
 before = datetime.now()
 
-if len(sys.argv) == 1: test = False
-else:
-    if sys.argv[1] == 'test': test = True
+test, pretend = False, False
+
+if sys.argv[1] == 'test': test = True
+elif sys.argv[1] == 'pretend': pretend = True
 
 session = boto3.Session(
     aws_access_key_id="1c407b86-9d98-4a01-bf59-3b45eed92548",
@@ -23,7 +24,7 @@ s3 = session.client(
 )
 
 paginator = s3.get_paginator("list_objects_v2")
-prefix = "us_stocks_sip"
+prefix = "us_stocks_sip/day_aggs_v1/"
 bucket = "flatfiles"
 allfilenames = []
 
@@ -35,7 +36,7 @@ for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
         allfilenames.append(obj["Key"])
 
 category = [i.split("/")[1] for i in allfilenames]
-stonkfilenames = [i for i in allfilenames if i.split("/")[1] == "day_aggs_v1"]
+# stonkfilenames = [i for i in allfilenames if i.split("/")[1] == "day_aggs_v1"]
 datestrings = [i.split("/")[-1].split(".")[0] for i in allfilenames]
 date = [datetime.date(datetime.strptime(i, "%Y-%m-%d")) for i in datestrings]
 
@@ -47,10 +48,13 @@ def get_last_line(file_name):
         last_line = f.readline().decode()
     return last_line
 
-most_recent_date_string = get_last_line("all_dailies.csv").split(",")[-1].strip('\r\n"')
-most_recent_date = datetime.date(datetime.strptime(most_recent_date_string, "%Y-%m-%d"))
+if pretend:
+    most_recent_date = (datetime.now() - timedelta(days=7)).date()
+else:
+    most_recent_date_string = get_last_line("all_dailies.csv").split(",")[-1].strip('\r\n"')
+    most_recent_date = datetime.date(datetime.strptime(most_recent_date_string, "%Y-%m-%d"))
 
-missingfiles = [i for i,j in zip(stonkfilenames, date) if j > most_recent_date]
+missingfiles = [i for i,j in zip(allfilenames, date) if j > most_recent_date]
 
 if len(missingfiles) == 0: 
     after = datetime.now()
