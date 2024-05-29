@@ -9,8 +9,9 @@ before = datetime.now()
 
 test, pretend = False, False
 
-if sys.argv[1] == 'test': test = True
-elif sys.argv[1] == 'pretend': pretend = True
+if len(sys.argv) > 1:
+    if sys.argv[1] == 'test': test = True
+    elif sys.argv[1] == 'pretend': pretend = True
 
 session = boto3.Session(
     aws_access_key_id="1c407b86-9d98-4a01-bf59-3b45eed92548",
