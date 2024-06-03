@@ -58,7 +58,7 @@ missingfiles = checkmissing(filename)
 if missingfiles is None: sys.exit("No missing files.")
 
 missing = merge_dailies(['day_aggs/'+f for f in missingfiles['filenames']])
-missing.to_csv(tempfile, mode='a', index=False)
+missing.to_csv(tempfile, index=False)
 append_csv(filename, tempfile)
 
 print(f'{len(missingfiles)} files merged and appended to {filename}')
