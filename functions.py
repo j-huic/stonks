@@ -4,7 +4,8 @@ from datetime import datetime
 import csv
 import sys
 
-def merge_dailies(filenames):
+def merge_dailies(filenames, path='day_aggs/'):
+    filenames = [path + f for f in filenames]
     datelist = [datetime.strptime(f.split('/')[1].split('.')[0], '%Y-%m-%d').date() for f in filenames]
     dflist = [pd.read_csv(f) for f in filenames]
 
@@ -60,4 +61,9 @@ def datefromfilename(filename, datetime=False):
         return datestring
     
 
-    
+def hasduplicates(df, get=False, cols=['ticker', 'date']):
+    duplicates = df.duplicated(cols)
+    if not get:
+        return duplicates.any()
+    else: 
+        return set(df[duplicates][cols[1]])
