@@ -48,3 +48,43 @@ def hasduplicates(df, get=False, cols=['ticker', 'date']):
         return duplicates.any()
     else: 
         return set(df[duplicates][cols[1]])
+
+def crossings(series, value=0):
+    if value == 0:
+        value = np.mean(series)
+
+    diff = series - value
+    signs = np.sign(diff)
+    sign_changes = np.diff(signs)
+    crossings = np.count_nonzero(sign_changes)
+
+    return crossings
+    
+def get_ranks(df):
+    if 'value' not in df.columns: df['value'] = df['close'] * df['volume']
+    latest = df[df['date'] == df['date'].max()].copy()
+    latest.sort_values('value', ascending=False, inplace=True)
+    order = latest['ticker'].tolist()
+    rankdict = dict(zip(order, range(len(order))))
+
+    return df['ticker'].map(rankdict)
+    
+def get_constrained_volatile(df, l = 0.85, u = 1.15):
+    df = df.copy()
+    df['return'] = df['close'].groupby(df['ticker']).pct_change()
+    df['cumret'] = df.groupby('ticker')['return'].transform(lambda x: (1 + x).cumprod())
+
+    sds = df.groupby('ticker')['return'].std()
+    crs = df.groupby('ticker')['cumret'].last()
+
+    between = [t for t, v in crs.items() if l < v < u]
+    between_sds = {key : value for key, value in sds.items() if key in between}
+    bs_sorted = sorted(between_sds.items(), key=lambda item:item[1], reverse=True)
+
+    return bs_sorted
+
+def last_n_months(df, n):
+    latest = pd.to_datetime(df['date'].max())
+    cutoff = latest - pd.DateOffset(months=n)
+    cutoff_str = cutoff.strftime('%Y-%m-%d')
+    return df[df['date'] > cutoff_str]
