@@ -2,10 +2,10 @@ import pandas as pd
 import numpy as np 
 import matplotlib.pyplot as plt
 
-def plot(df, ticker):
+def plot(df, ticker, var='close'):
     ticker = ticker.upper()
     df = df.set_index('date', inplace=False)
-    df[df.ticker == ticker].close.plot()
+    df[df.ticker == ticker][var].plot()
     plt.xticks(rotation=45)
     plt.show()
 
@@ -37,7 +37,7 @@ def cumret(vector):
     returns = vector.pct_change()
     return (1 + returns).cumprod()
 
-def ranking(ticker):
+def ranking(ticker, rankdict):
     if ticker not in rankdict:
         return None
     return int(rankdict[ticker])

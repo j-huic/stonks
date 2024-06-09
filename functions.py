@@ -59,7 +59,6 @@ def datefromfilename(filename, datetime=False):
         return datetime.strptime(datestring, '%Y-%m-%d')
     else:
         return datestring
-    
 
 def hasduplicates(df, get=False, cols=['ticker', 'date']):
     duplicates = df.duplicated(cols)
@@ -67,3 +66,6 @@ def hasduplicates(df, get=False, cols=['ticker', 'date']):
         return duplicates.any()
     else: 
         return set(df[duplicates][cols[1]])
+
+def missingdates(existingfiles, downloaddates):
+    return [x for x in downloaddates if x not in existingfiles]
