@@ -2,10 +2,14 @@ import pandas as pd
 import numpy as np 
 import matplotlib.pyplot as plt
 
-def plot(df, ticker, var='close'):
-    ticker = ticker.upper()
+def plot(df, ticker='', ma=5, var='close', forceticker=0):
+    if forceticker == 0:
+        ticker = ticker.upper()
+    else: 
+        ticker = forceticker
+
     df = df.set_index('date', inplace=False)
-    df[df.ticker == ticker][var].plot()
+    df[df.ticker == ticker][var].rolling(ma).mean().plot()
     plt.xticks(rotation=45)
     plt.show()
 
@@ -49,11 +53,11 @@ def hasduplicates(df, get=False, cols=['ticker', 'date']):
     else: 
         return set(df[duplicates][cols[1]])
 
-def crossings(series, value=0):
+def get_crossings(series, value=0, ma=1):
     if value == 0:
         value = np.mean(series)
 
-    diff = series - value
+    diff = series.rolling(ma).mean() - value
     signs = np.sign(diff)
     sign_changes = np.diff(signs)
     crossings = np.count_nonzero(sign_changes)
@@ -88,3 +92,15 @@ def last_n_months(df, n):
     cutoff = latest - pd.DateOffset(months=n)
     cutoff_str = cutoff.strftime('%Y-%m-%d')
     return df[df['date'] > cutoff_str]
+
+def get_tickers_between(df, l=0.75, u=1.25, var='cumret'):
+    crs = df.groupby('ticker')[var].last()
+    between = [t for t in crs.index if crs[t] >= l and crs[t] <= u]
+    return between
+
+def get_between(df, l=0.75, u=1.25, var='cumret'):
+    tickers = get_tickers_between(df, l=l, u=u, var=var)
+    return df[df['ticker'].isin(tickers)].copy()
+
+def normalize(vector):
+    return (vector - vector.mean()) / vector.std()
