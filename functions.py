@@ -3,6 +3,7 @@ import os
 from datetime import datetime
 import csv
 import sys
+import requests
 
 def merge_dailies(filenames, path='day_aggs/'):
     filenames = [path + f for f in filenames]
@@ -69,3 +70,47 @@ def hasduplicates(df, get=False, cols=['ticker', 'date']):
 
 def missingdates(existingfiles, downloaddates):
     return [x for x in downloaddates if x not in existingfiles]
+
+def daily_agg(date, apikey='3CenRhJBzNqh2_C_5S38pOyt3ozLvQDm', df=False):
+    url = f'https://api.polygon.io/v2/aggs/grouped/locale/us/market/stocks/{date}?apiKey={apikey}'
+    response = requests.get(url)
+    data = response.json()
+    status = data['status']
+
+    if status == 'NOT_AUTHORIZED':
+        print(data['message'])
+        return None
+    elif status == 'OK':
+        if data['queryCount'] == 0:
+            print('No data available for ' + date)
+            return None
+    
+    if df: 
+        return pd.DataFrame(data['results'])
+    else: 
+        return data
+    
+def single_stock(ticker, from_date, to_date, apikey, df=True):
+    url = f'https://api.polygon.io/v2/aggs/ticker/{ticker}/range/1/day/{from_date}/{to_date}?apiKey={apikey}'
+    response = requests.get(url)
+    data = response.json()
+
+    if df:
+        df = pd.DataFrame(data['results'])
+    return data
+
+def date_from_timestamp(timestamp):
+    return datetime.fromtimestamp(timestamp / 1000).strftime('%Y-%m-%d')
+
+def get_trading_days(from_date=None, to_date=None):
+    nyse = mcal.get_calendar('NYSE')
+
+    if to_date is None:
+        to_date = datetime.now().date()
+    if from_date is None:
+        from_date = datetime.now().date() - timedelta(days=365*5)
+
+    trading_days = nyse.valid_days(start_date=from_date, end_date=to_date)
+    trading_dates = [day.strftime('%Y-%m-%d') for day in trading_days]
+    
+    return trading_dates
