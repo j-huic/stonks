@@ -104,3 +104,16 @@ def get_between(df, l=0.75, u=1.25, var='cumret'):
 
 def normalize(vector):
     return (vector - vector.mean()) / vector.std()
+
+def get_trading_days(from_date=None, to_date=None):
+    nyse = mcal.get_calendar('NYSE')
+
+    if to_date is None:
+        to_date = datetime.now().date()
+    if from_date is None:
+        from_date = datetime.now().date() - timedelta(days=365*5)
+
+    trading_days = nyse.valid_days(start_date=from_date, end_date=to_date)
+    trading_dates = [day.strftime('%Y-%m-%d') for day in trading_days]
+    
+    return trading_dates
