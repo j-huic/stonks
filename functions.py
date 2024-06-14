@@ -1,9 +1,10 @@
 import pandas as pd
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 import csv
 import sys
 import requests
+import pandas_market_calendars as mcal
 
 def merge_dailies(filenames, path='day_aggs/'):
     filenames = [path + f for f in filenames]
@@ -71,24 +72,28 @@ def hasduplicates(df, get=False, cols=['ticker', 'date']):
 def missingdates(existingfiles, downloaddates):
     return [x for x in downloaddates if x not in existingfiles]
 
-def daily_agg(date, apikey='3CenRhJBzNqh2_C_5S38pOyt3ozLvQDm', df=False):
+def daily_agg(date, apikey='3CenRhJBzNqh2_C_5S38pOyt3ozLvQDm', output='data'):
     url = f'https://api.polygon.io/v2/aggs/grouped/locale/us/market/stocks/{date}?apiKey={apikey}'
     response = requests.get(url)
-    data = response.json()
-    status = data['status']
+    response = response.json()
+    status = response['status']
 
     if status == 'NOT_AUTHORIZED':
-        print(data['message'])
+        print(response['message'])
         return None
     elif status == 'OK':
-        if data['queryCount'] == 0:
+        if response['queryCount'] == 0:
             print('No data available for ' + date)
             return None
     
-    if df: 
+    if output == 'data': 
+        return response['results']
+    elif output == 'df': 
         return pd.DataFrame(data['results'])
-    else: 
-        return data
+    elif output == 'all':
+        return response
+    else:
+        return None
     
 def single_stock(ticker, from_date, to_date, apikey, df=True):
     url = f'https://api.polygon.io/v2/aggs/ticker/{ticker}/range/1/day/{from_date}/{to_date}?apiKey={apikey}'
