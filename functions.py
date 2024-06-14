@@ -69,8 +69,8 @@ def hasduplicates(df, get=False, cols=['ticker', 'date']):
     else: 
         return set(df[duplicates][cols[1]])
 
-def missingdates(existingfiles, downloaddates):
-    return [x for x in downloaddates if x not in existingfiles]
+def missingdates(existingdates, availabledates):
+    return [x for x in availabledates if x not in existingdates]
 
 def daily_agg(date, apikey='3CenRhJBzNqh2_C_5S38pOyt3ozLvQDm', output='data'):
     url = f'https://api.polygon.io/v2/aggs/grouped/locale/us/market/stocks/{date}?apiKey={apikey}'
@@ -119,3 +119,34 @@ def get_trading_days(from_date=None, to_date=None):
     trading_dates = [day.strftime('%Y-%m-%d') for day in trading_days]
     
     return trading_dates
+
+def loadtest(filename, onecol=False):
+    before = datetime.now()
+    
+    if onecol:
+        df = pd.read_csv(filename, usecols=[0])
+    else:
+        df = pd.read_csv(filename)
+
+    after = datetime.now()
+    print((after - before).total_seconds())
+
+def datelist_to_df(datelist):
+    before = datetime.now()
+    
+    alljson = []
+    for i, date in enumerate(tqdm(datelist)):
+        data = daily_agg(date)
+        if data is not None:
+            alljson.extend(data)
+    
+    after = datetime.now()
+    totalseconds = (after - before).total_seconds()
+    minutes = totalseconds // 60
+    seconds = totalseconds % 60
+    print(f'{len(datelist)} file requests done in {minutes} minutes and {round(seconds, 2)} seconds')
+    
+    return pd.DataFrame(alljson)
+
+def datestring_from_timestamp(timestamp):
+    return datetime.fromtimestamp(timestamp / 1000).strftime('%Y-%m-%d')
