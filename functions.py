@@ -150,3 +150,10 @@ def datelist_to_df(datelist):
 
 def datestring_from_timestamp(timestamp):
     return datetime.fromtimestamp(timestamp / 1000).strftime('%Y-%m-%d')
+
+def get_table_colnames(database='main.db', table='stonks'):
+    conn = sqlite3.connect(database)
+    c = conn.cursor()
+    info = c.execute(f'PRAGMA table_info({table})').fetchall()
+    
+    return [i[1] for i in info]
