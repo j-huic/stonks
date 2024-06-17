@@ -6,6 +6,7 @@ import sys
 import requests
 import pandas_market_calendars as mcal
 from tqdm import tqdm
+import sqlite3
 
 def merge_dailies(filenames, path='day_aggs/'):
     filenames = [path + f for f in filenames]
@@ -86,7 +87,7 @@ def daily_agg(date, apikey='3CenRhJBzNqh2_C_5S38pOyt3ozLvQDm', output='data'):
     if status == 'NOT_AUTHORIZED':
         print(response['message'])
         return None
-    elif status == 'OK':
+    elif status == 'OK' or status == 'DELAYED':
         if response['queryCount'] == 0:
             print('No data available for ' + date)
             return None
@@ -102,7 +103,7 @@ def daily_agg(date, apikey='3CenRhJBzNqh2_C_5S38pOyt3ozLvQDm', output='data'):
     else:
         return None
     
-def single_stock(ticker, from_date, to_date, apikey, df=True):
+def single_stock(ticker, from_date, to_date, apikey='3CenRhJBzNqh2_C_5S38pOyt3ozLvQDm', df=True):
     url = f'https://api.polygon.io/v2/aggs/ticker/{ticker}/range/1/day/{from_date}/{to_date}?apiKey={apikey}'
     response = requests.get(url)
     data = response.json()
@@ -186,7 +187,7 @@ def timestamp_from_date(datestring):
 def date_to_timestamp(datestring):
     return int(datetime.strptime(datestring, '%Y-%m-%d').timestamp() * 1000)
 
-def get_table_colnames(database='main.db', table='stocks'):
+def get_table_colnames(table='stocks', database='main.db'):
     conn = sqlite3.connect(database)
     c = conn.cursor()
     info = c.execute(f'PRAGMA table_info({table})').fetchall()
@@ -213,5 +214,6 @@ def date_separation(datelist):
     datestrings = sorted(list(set(datelist)))
     dates = [datetime.strptime(date, '%Y-%m-%d') for date in datestrings]
     timedeltas = [dates[i] - dates[i-1] for i in range(1, len(dates))]
+
     return max(timedeltas).days
     
