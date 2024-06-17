@@ -5,6 +5,7 @@ import csv
 import sys
 import requests
 import pandas_market_calendars as mcal
+from tqdm import tqdm
 
 def merge_dailies(filenames, path='day_aggs/'):
     filenames = [path + f for f in filenames]
@@ -76,6 +77,10 @@ def daily_agg(date, apikey='3CenRhJBzNqh2_C_5S38pOyt3ozLvQDm', output='data'):
     url = f'https://api.polygon.io/v2/aggs/grouped/locale/us/market/stocks/{date}?apiKey={apikey}'
     response = requests.get(url)
     response = response.json()
+
+    if output == 'response':
+        return response
+
     status = response['status']
 
     if status == 'NOT_AUTHORIZED':
@@ -85,6 +90,8 @@ def daily_agg(date, apikey='3CenRhJBzNqh2_C_5S38pOyt3ozLvQDm', output='data'):
         if response['queryCount'] == 0:
             print('No data available for ' + date)
             return None
+    else:
+        return None
     
     if output == 'data': 
         return response['results']
@@ -131,7 +138,7 @@ def loadtest(filename, onecol=False):
     after = datetime.now()
     print((after - before).total_seconds())
 
-def datelist_to_df(datelist):
+def datelist_to_df(datelist, json=False):
     before = datetime.now()
     
     alljson = []
@@ -141,12 +148,31 @@ def datelist_to_df(datelist):
             alljson.extend(data)
     
     after = datetime.now()
-    totalseconds = (after - before).total_seconds()
-    minutes = totalseconds // 60
-    seconds = totalseconds % 60
-    print(f'{len(datelist)} file requests done in {minutes} minutes and {round(seconds, 2)} seconds')
+    file_request_print(len(datelist), after - before)
     
-    return pd.DataFrame(alljson)
+    if len(alljson) == 0:
+        return None
+    elif json:
+        return alljson
+    else:
+        return pd.DataFrame(alljson)
+
+def file_request_print(n_files, timedelta):
+    seconds = timedelta.total_seconds()
+    minutes = seconds // 60
+    seconds = round(seconds % 60, 4)
+
+    if n_files == 1:
+        if minutes == 0:
+            print(f'{n_files} file request done in {seconds} seconds')
+        else:
+            print(f'{n_files} file request done in {minutes} minutes and {round(seconds, 2)} seconds')
+    else:
+        if minutes == 0:
+            print(f'{n_files} file requests done in {seconds} seconds')
+        else:
+            print(f'{n_files} file requests done in {minutes} minutes and {round(seconds, 2)} seconds')
+
 
 def date_from_timestamp(timestamp):
     return datetime.fromtimestamp(timestamp / 1000).strftime('%Y-%m-%d')
@@ -166,3 +192,26 @@ def get_table_colnames(database='main.db', table='stocks'):
     info = c.execute(f'PRAGMA table_info({table})').fetchall()
     
     return [i[1] for i in info]
+
+def timedelta_to_str(td):
+    seconds = td.total_seconds()
+    hours = seconds // 3600
+    minutes = (seconds % 3600) // 60
+    seconds = seconds % 60
+
+    if hours != 0:
+        return f'{int(hours)} hours, {int(minutes)} minutes, {int(seconds)} seconds'
+    elif minutes > 0:
+        return f'{int(minutes)} minutes, {int(seconds)} seconds'
+    else:
+        return f'{round(seconds, 4)} seconds'
+
+def date_separation(datelist):
+    if len(datelist) < 2:
+        return 0
+        
+    datestrings = sorted(list(set(datelist)))
+    dates = [datetime.strptime(date, '%Y-%m-%d') for date in datestrings]
+    timedeltas = [dates[i] - dates[i-1] for i in range(1, len(dates))]
+    return max(timedeltas).days
+    
