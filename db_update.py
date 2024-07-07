@@ -10,7 +10,7 @@ before = datetime.now()
 args = sys.argv[1:]
 
 conn = sqlite3.connect('main.db')
-tablename = 'test'
+tablename = 'stocks'
 
 if 'deep' in args:
     timestamps = pd.read_sql_query(f'SELECT DISTINCT time FROM {tablename}', conn)
@@ -24,6 +24,8 @@ else:
 
 if len(missingdates) == 0:
         print('No missing dates')
+        after = datetime.now()
+        print('Total time elapsed: ' + str(round((after - before).total_seconds(), 2)) + ' seconds')
         sys.exit()
 elif len(missingdates) == 1:
     print(f'There is 1 missing date at {missingdates[0]}')
@@ -39,13 +41,14 @@ if input.lower() != 'y':
     sys.exit()
 
 new_data = datelist_to_df(missingdates, json=False)
-new_data.columns = get_table_colnames(tablename)
 
 if new_data is None:
     print('No new data')
     sys.exit()
 
+new_data.columns = get_table_colnames(tablename)
+print('Updating Database...')
 new_data.to_sql(tablename, conn, if_exists='append', index=False)
 
 after = datetime.now()
-print('Total time elapsed: ' + (after - before).total_seconds())
+print('Total time elapsed: ' + str(round((after - before).total_seconds(), 2)) + ' seconds')

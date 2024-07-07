@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np 
 import matplotlib.pyplot as plt
+import talib
 
 def plot(df, ticker='', ma=5, var='close', forceticker=0):
     if forceticker == 0:
@@ -12,6 +13,10 @@ def plot(df, ticker='', ma=5, var='close', forceticker=0):
     df[df.ticker == ticker][var].rolling(ma).mean().plot()
     plt.xticks(rotation=45)
     plt.show()
+
+def plot_series(series, ma=5):
+    sma = talib.SMA(np.array(series), timeperiod=ma)
+    plt.plot(series)
 
 def getdistance(vector, n=20):
     ma = talib.MA(vector, timeperiod=n)
