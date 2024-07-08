@@ -216,4 +216,12 @@ def date_separation(datelist):
     timedeltas = [dates[i] - dates[i-1] for i in range(1, len(dates))]
 
     return max(timedeltas).days
+
+def get_data(query):
+    conn = sqlite3.connect('main.db')
+    c = conn.cursor()
+    
+    c.execute(query)
+    data = c.fetchall()
+    return data
     
