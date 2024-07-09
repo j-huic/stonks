@@ -220,8 +220,66 @@ def date_separation(datelist):
 def get_data(query):
     conn = sqlite3.connect('main.db')
     c = conn.cursor()
-    
+
     c.execute(query)
     data = c.fetchall()
     return data
+
+def get_top_stocks(n=5000, since='2023-01-01', all=False):
+    select = '*' if all else 'ticker, time, close'
+    timestamp = date_to_timestamp(since)
+    command = f'''
+        SELECT {select} FROM stocks
+        WHERE time > {timestamp} and ticker in (
+            SELECT ticker FROM stocks
+            WHERE time = (
+                SELECT MAX(time) FROM stocks
+            )
+            ORDER BY volume * vw DESC
+            LIMIT {n}
+        )
+        '''
+    return command
+
+def get_max_value(var, database='main.db', table='stocks'):
+    conn = sqlite3.connect(database)
+    c = conn.cursor()
+    max = c.execute(f'SELECT MAX({var}) FROM {table};').fetchone()[0]
+    return max
     
+def option_handler(apikey='3CenRhJBzNqh2_C_5S38pOyt3ozLvQDm', noqm=False, **kwargs):
+    kwargs['apiKey'] = apikey
+
+    if 'from_date' in kwargs:
+        kwargs['execution_date.gte'] = kwargs['from_date']
+        del kwargs['from_date']
+    if 'to_date' in kwargs:
+        kwargs['execution_date.lte'] = kwargs['to_date']
+        del kwargs['to_date']
+        
+    options = [f'{key}={value}' for key, value in kwargs.items()]
+    output = '?' + '&'.join(options) if not noqm else '&' + '&'.join(options)
+    
+    return output
+        
+def make_request(baseurl, output='json', apikey='3CenRhJBzNqh2_C_5S38pOyt3ozLvQDm', **kwargs):
+    if baseurl[:5] != 'https': baseurl = 'https://api.polygon.io/' + baseurl
+    
+    optionstring = option_handler(apikey, **kwargs) if 'cursor' not in baseurl else option_handler(apikey, noqm=True, **kwargs)
+    url = baseurl + optionstring
+    
+    if output == 'json':
+        return requests.get(url).json()
+    else:
+        return requests.get(url)
+
+def get_splits(output='json', **kwargs):
+    output = []
+    response = make_request('v3/reference/splits', **kwargs)
+    output.extend(response['results'])
+
+    while ('next_url' in response.keys()):
+        response = make_request(response['next_url'])
+        output.extend(response['results'])
+        
+    return pd.DataFrame(output)
