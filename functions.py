@@ -275,7 +275,7 @@ def make_request(baseurl, output='json', apikey='3CenRhJBzNqh2_C_5S38pOyt3ozLvQD
 
 def get_splits(output='json', **kwargs):
     output = []
-    response = make_request('v3/reference/splits', **kwargs)
+    response = make_request('v3/reference/splits', **kwargs, limit=1000)
     output.extend(response['results'])
 
     while ('next_url' in response.keys()):
