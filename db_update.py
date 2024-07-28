@@ -1,4 +1,4 @@
-#!/usr/bin/env c:\Users\Janko\Miniconda3\envs\stonks\python.exe
+#!/opt/homebrew/Caskroom/miniconda/base/envs/stonks/bin/python
 
 import sys
 import pandas as pd
