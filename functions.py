@@ -7,6 +7,7 @@ import requests
 import pandas_market_calendars as mcal
 from tqdm import tqdm
 import sqlite3
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 def merge_dailies(filenames, path='day_aggs/'):
     filenames = [path + f for f in filenames]
@@ -147,6 +148,31 @@ def datelist_to_df(datelist, json=False):
         data = daily_agg(date)
         if data is not None:
             alljson.extend(data)
+    
+    after = datetime.now()
+    file_request_print(len(datelist), after - before)
+    
+    if len(alljson) == 0:
+        return None
+    elif json:
+        return alljson
+    else:
+        return pd.DataFrame(alljson)
+
+def datelist_to_df_parallel(datelist, max_workers=11, json=False):
+    before = datetime.now()
+    
+    alljson = []
+    
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = [executor.submit(daily_agg, date) for date in datelist]
+        for future in tqdm(as_completed(futures), total=len(datelist)):
+            try:
+                data = future.result()
+                if data is not None:
+                    alljson.extend(data)
+            except Exception as e:
+                print(f"Error fetching data: {e}")
     
     after = datetime.now()
     file_request_print(len(datelist), after - before)
