@@ -13,12 +13,12 @@ conn = sqlite3.connect('main.db')
 tablename = 'stocks'
 
 if 'deep' in args:
-    timestamps = pd.read_sql_query(f'SELECT DISTINCT time FROM {tablename}', conn)
-    dates = [date_from_timestamp(ts) for ts in timestamps['time']]
+    timestamps = pd.read_sql_query(f'SELECT DISTINCT timestamp FROM {tablename}', conn)
+    dates = [date_from_timestamp(ts) for ts in timestamps['timestamp']]
     trading_days = get_trading_days(from_date=min(dates))[1:]
     missingdates = missingdates(dates, trading_days)
 else:
-    last_timestamp = pd.read_sql_query(f'SELECT MAX(time) FROM {tablename}', conn).iloc[0,0]
+    last_timestamp = pd.read_sql_query(f'SELECT MAX(timestamp) FROM {tablename}', conn).iloc[0,0]
     last_date = date_from_timestamp(last_timestamp)
     missingdates = get_trading_days(from_date=last_date)[1:]
 
