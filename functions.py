@@ -252,16 +252,16 @@ def get_data(query):
     return data
 
 def get_top_stocks(n=5000, since='2023-01-01', all=False):
-    select = '*' if all else 'ticker, time, close'
+    select = '*' if all else 'ticker, timestamp, close'
     timestamp = date_to_timestamp(since)
     command = f'''
         SELECT {select} FROM stocks
-        WHERE time > {timestamp} and ticker in (
+        WHERE timestamp > {timestamp} and ticker in (
             SELECT ticker FROM stocks
-            WHERE time = (
-                SELECT MAX(time) FROM stocks
+            WHERE timestamp = (
+                SELECT MAX(timestamp) FROM stocks
             )
-            ORDER BY volume * vw DESC
+            ORDER BY volume * volume_weighted DESC
             LIMIT {n}
         )
         '''
