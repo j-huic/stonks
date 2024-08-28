@@ -12,3 +12,4 @@ diag.ipynb
 *.db-journal
 *.sqbpro
 *.png
+.DS_Store
