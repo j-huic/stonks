@@ -43,7 +43,7 @@ if input.lower() != 'y':
     sys.exit()
 
 # missing data into pandas dataframe
-new_data = datelist_to_df(missingdates, json=False)
+new_data = datelist_to_df_parallel(missingdates, json=False)
 
 if new_data is None:
     print('No new data')

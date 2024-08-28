@@ -113,9 +113,6 @@ def single_stock(ticker, from_date, to_date, apikey='3CenRhJBzNqh2_C_5S38pOyt3oz
         df = pd.DataFrame(data['results'])
     return data
 
-def date_from_timestamp(timestamp):
-    return datetime.fromtimestamp(timestamp / 1000).strftime('%Y-%m-%d')
-
 def get_trading_days(from_date=None, to_date=None):
     nyse = mcal.get_calendar('NYSE')
 
@@ -182,7 +179,7 @@ def datelist_to_df_parallel(datelist, max_workers=11, json=False):
     elif json:
         return alljson
     else:
-        return pd.DataFrame(alljson)
+        return pd.DataFrame(alljson).sort_values('t')
 
 def file_request_print(n_files, timedelta):
     seconds = timedelta.total_seconds()
