@@ -3,8 +3,9 @@ import pandas as pd
 from functions import *
 
 datelist = get_trading_days()
-max_workers = input('Enter max workers: ')
+max_workers = input('Enter max workers (): ')
 df = datelist_to_df_parallel(datelist, max_workers=max_workers)
+df['date'] = df['t'].apply(date_from_timestamp)
 
 database = input('Enter database name: ')
 table = input('Enter table name: ')
