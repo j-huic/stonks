@@ -1,5 +1,3 @@
-#!/opt/homebrew/Caskroom/miniconda/base/envs/stonks/bin/python
-
 import sys
 import pandas as pd
 import sqlite3
@@ -9,8 +7,9 @@ from datetime import datetime
 before = datetime.now()
 args = sys.argv[1:]
 
-conn = sqlite3.connect('main.db')
+db_uri = ('/home/janko/stocklens/main.db')
 tablename = 'stocks'
+conn = sqlite3.connect(db_uri)
 
 # if deep as argument, check all previous dates for missing data, otherwise since latest
 if 'deep' in args:
@@ -37,13 +36,14 @@ else:
 if date_separation(missingdates) > 7:
     print('NOTE: Missing dates are far apart: ', missingdates)
 
-input = input('Do you wish to proceed? (y/n)')
-if input.lower() != 'y':
+proceed = input('Do you wish to proceed? (y/n)')
+if proceed.lower() != 'y':
     print('Exiting.')
     sys.exit()
+days = int(input('How many days to download: '))
 
 # missing data into pandas dataframe
-new_data = datelist_to_df_parallel(missingdates, json=False)
+new_data = datelist_to_df_parallel(missingdates[:days], json=False, max_workers=5)
 
 if new_data is None:
     print('No new data')
@@ -52,7 +52,7 @@ if new_data is None:
 # new date column, align colnames, and append
 # new_data['date'] = new_data['timestamp'].apply(date_from_timestamp)
 new_data['date'] = new_data['t'].apply(date_from_timestamp)
-new_data.columns = get_table_colnames(tablename)
+new_data.columns = get_table_colnames(table=tablename, database=db_uri)
 
 print('Updating Database...')
 new_data.to_sql(tablename, conn, if_exists='append', index=False)
