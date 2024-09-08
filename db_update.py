@@ -40,7 +40,11 @@ proceed = input('Do you wish to proceed? (y/n)')
 if proceed.lower() != 'y':
     print('Exiting.')
     sys.exit()
-days = int(input('How many days to download: '))
+
+if len(missingdates) > 50:
+    days = int(input('How many days to download: ')
+else:
+    days = len(missingdates)
 
 # missing data into pandas dataframe
 new_data = datelist_to_df_parallel(missingdates[:days], json=False, max_workers=5)
