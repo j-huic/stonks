@@ -42,7 +42,7 @@ if proceed.lower() != 'y':
     sys.exit()
 
 if len(missingdates) > 50:
-    days = int(input('How many days to download: ')
+    days = int(input('How many days to download: '))
 else:
     days = len(missingdates)
 
