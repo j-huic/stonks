@@ -156,14 +156,14 @@ def datelist_to_df(datelist, json=False):
     else:
         return pd.DataFrame(alljson)
 
-def datelist_to_df_parallel(datelist, max_workers=11, json=False):
+def datelist_to_df_parallel(datelist, max_workers=11, json=False, noprint=False):
     before = datetime.now()
     
     alljson = []
     
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = [executor.submit(daily_agg, date) for date in datelist]
-        for future in tqdm(as_completed(futures), total=len(datelist)):
+        for future in tqdm(as_completed(futures), total=len(datelist), disable=noprint):
             try:
                 data = future.result()
                 if data is not None:
@@ -249,7 +249,7 @@ def get_data(query):
     return data
 
 def get_top_stocks(n=5000, since='2023-01-01', all=False):
-    select = '*' if all else 'ticker, timestamp, close'
+    select = '*' if all else 'ticker, date, close'
     timestamp = date_to_timestamp(since)
     command = f'''
         SELECT {select} FROM stocks
