@@ -3,11 +3,12 @@ import pandas as pd
 import sqlite3
 from functions import *
 from datetime import datetime
+import os
 
 before = datetime.now()
 args = sys.argv[1:]
 
-db_uri = ('/home/janko/stocklens/main.db')
+db_uri = os.getenv('DB_URI_SHORT') 
 tablename = 'stocks'
 conn = sqlite3.connect(db_uri)
 
