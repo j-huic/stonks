@@ -36,7 +36,7 @@ if date_separation(missingdates) > 4:
    logging.info('NOTE: Missing dates are far apart: %s', missingdates)
 
 # missing data into pandas dataframe
-new_data = datelist_to_df_parallel(missingdates, json=False, max_workers=5)
+new_data = datelist_to_df_parallel(missingdates, json=False, max_workers=5, noprint=True)
 
 if new_data is None:
     logging.info('Data for %s not yet available', missingdates)
@@ -49,4 +49,5 @@ new_data.to_sql(tablename, conn, if_exists='append', index=False)
 dl_dates = new_data['date'].unique()
 
 after = datetime.now()
-logging.info('Successfully downloaded %l files for trading day %d; Time elapsed: %t', len(dl_dates), dl_dates, str(round((after - before).total_seconds(), 2)) + ' seconds') 
+
+logging.info('Successfully downloaded %d files for trading day %s; Time elapsed: %s seconds', len(dl_dates), dl_dates, str(round((after - before).total_seconds(), 2)))

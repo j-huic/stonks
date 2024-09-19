@@ -90,7 +90,6 @@ def daily_agg(date, apikey='3CenRhJBzNqh2_C_5S38pOyt3ozLvQDm', output='data'):
         return None
     elif status == 'OK' or status == 'DELAYED':
         if response['queryCount'] == 0:
-            print('No data available for ' + date)
             return None
     else:
         return None
@@ -172,7 +171,9 @@ def datelist_to_df_parallel(datelist, max_workers=11, json=False, noprint=False)
                 print(f"Error fetching data: {e}")
     
     after = datetime.now()
-    file_request_print(len(datelist), after - before)
+
+    if not noprint:
+    	file_request_print(len(datelist), after - before)
     
     if len(alljson) == 0:
         return None
