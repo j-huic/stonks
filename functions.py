@@ -1,12 +1,13 @@
 import pandas as pd
 import os
-from datetime import datetime, timedelta
 import csv
 import sys
 import requests
-import pandas_market_calendars as mcal
-from tqdm import tqdm
 import sqlite3
+import pandas_market_calendars as mcal
+import connectorx as cx
+from datetime import datetime, timedelta
+from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 def merge_dailies(filenames, path='day_aggs/'):
@@ -110,7 +111,9 @@ def single_stock(ticker, from_date, to_date, apikey='3CenRhJBzNqh2_C_5S38pOyt3oz
 
     if df:
         df = pd.DataFrame(data['results'])
-    return data
+        return df
+    else:
+        return data
 
 def get_trading_days(from_date=None, to_date=None):
     nyse = mcal.get_calendar('NYSE')
@@ -249,8 +252,13 @@ def get_data(query):
     data = c.fetchall()
     return data
 
-def get_top_stocks(n=5000, since='2023-01-01', all=False):
-    select = '*' if all else 'ticker, date, close'
+def get_data_cx(query):
+    df = cx.read_sql('sqlite://main.db', query)
+
+    return df
+
+def get_top_stocks_query(n, since, vars):
+    select = ', '.join(vars)
     timestamp = date_to_timestamp(since)
     command = f'''
         SELECT {select} FROM stocks
@@ -264,6 +272,20 @@ def get_top_stocks(n=5000, since='2023-01-01', all=False):
         )
         '''
     return command
+
+def get_top_stocks_cx(n=5000, since='2023-01-01', vars=['ticker', 'date', 'close']):
+    query = get_top_stocks_query(n, since, vars)
+    data = pd.DataFrame(get_data(query))
+    data.columns = vars
+
+    return data
+
+def get_top_stocks_cx(n=5000, since='2023-01-01', vars=['ticker', 'date', 'close']):
+    query = get_top_stocks_query(n, since, vars)
+    data = pd.DataFrame(get_data_cx(query))
+    data.columns = vars
+
+    return data
 
 def get_max_value(var, database='main.db', table='stocks'):
     conn = sqlite3.connect(database)
@@ -307,3 +329,37 @@ def get_splits(output='json', **kwargs):
         output.extend(response['results'])
         
     return pd.DataFrame(output)
+
+def get_stocks(tickers, startDate, allCols=False):
+    conn = sqlite3.connect('main.db')
+
+    columns = '*' if allCols else 'date, ticker, close'
+    sql_tickers = ', '.join([f"'{t}'" for t in tickers])
+
+    query = f'''
+    SELECT {columns} FROM stocks WHERE ticker in ({sql_tickers}) AND date >= '{startDate}'
+    '''
+
+    df = pd.read_sql_query(query, conn)
+    return df
+
+def get_crypto(ticker='BTCUSD', startDate = '2024-01-01', allCols=False, apiKey='3CenRhJBzNqh2_C_5S38pOyt3ozLvQDm'):
+    endDate = datetime.now().strftime('%Y-%m-%d')
+    url = f'https://api.polygon.io/v2/aggs/ticker/X:{ticker}/range/1/day/{startDate}/{endDate}?apiKey=' + apiKey
+    response = requests.get(url)
+    df = pd.DataFrame(response.json()['results'])
+    colmap = {
+        'v' : 'volume',
+        'wv' : 'volume_weighted',
+        'o' : 'open',
+        'c' : 'close',
+        'h' : 'high',
+        'l' : 'low',
+        't' : 'timestamp',
+        'n' : 'transactions'
+    }
+    df.rename(columns=colmap, inplace=True)
+    df['date'] = pd.to_datetime(df['timestamp'], unit='ms').dt.strftime('%Y-%m-%d')
+    df['ticker'] = ticker
+
+    return df if allCols else df[['date', 'ticker', 'close']]
