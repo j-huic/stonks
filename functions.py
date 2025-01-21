@@ -258,7 +258,8 @@ def get_data_cx(query):
     return df
 
 def get_top_stocks_query(n, since, vars):
-    select = ', '.join(vars)
+    columns = [f"CAST({col} AS FLOAT) AS {col}" if col == 'volume' else col for col in vars]
+    select = ', '.join(columns)
     timestamp = date_to_timestamp(since)
     command = f'''
         SELECT {select} FROM stocks
@@ -275,6 +276,7 @@ def get_top_stocks_query(n, since, vars):
 
 def get_top_stocks_cx(n=5000, since='2023-01-01', vars=['ticker', 'date', 'close']):
     query = get_top_stocks_query(n, since, vars)
+    print(query)
     data = pd.DataFrame(get_data(query))
     data.columns = vars
 
