@@ -3,6 +3,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import talib
 
+from functions import get_top_stocks_cx, get_top_stocks_query
+
 def plot(df, ticker='', ma=5, var='close', forceticker=0, plot=True):
     if forceticker == 0:
         ticker = ticker.upper()
@@ -139,3 +141,25 @@ def get_between(df, l=0.75, u=1.25, var='cumret'):
 
 def normalize(vector):
     return (vector - vector.mean()) / vector.std()
+
+def add_n_week_low(df, targetcol, n):
+    nwklow = str(n) + '-wk-low'
+    df[nwklow] = df.groupby('ticker')[targetcol].transform(lambda x: talib.MIN(x, timeperiod=n*5))
+
+    return df
+
+def add_n_week_high(df, targetcol, n):
+    nwkhigh = str(n) + '-wk-high'
+    df[nwkhigh] = df.groupby('ticker')[targetcol].transform(lambda x: talib.MAX(x, timeperiod=n*5))
+
+    return df
+
+def n_week_low(df, n, targetcol='close', groupcol='ticker'):
+    nwl = df.groupby(groupcol)[targetcol].transform(lambda x: talib.MIN(x, timeperiod=n*5))
+
+    return nwl
+    
+def n_week_high(df, n, targetcol='close', groupcol='ticker'):
+    nwh = df.groupby(groupcol)[targetcol].transform(lambda x: talib.MAX(x, timeperiod=n*5))
+
+    return nwh
