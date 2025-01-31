@@ -76,7 +76,9 @@ def hasduplicates(df, get=False, cols=['ticker', 'date']):
 def missingdates(existingdates, availabledates):
     return [x for x in availabledates if x not in existingdates]
 
-def daily_agg(date, apikey='3CenRhJBzNqh2_C_5S38pOyt3ozLvQDm', output='data'):
+def daily_agg(date, apikey='', output='data'):
+    if apikey == '':
+        apikey = os.getenv('POLYGON_APIKEY_1')
     url = f'https://api.polygon.io/v2/aggs/grouped/locale/us/market/stocks/{date}?apiKey={apikey}'
     response = requests.get(url)
     response = response.json()
@@ -104,7 +106,9 @@ def daily_agg(date, apikey='3CenRhJBzNqh2_C_5S38pOyt3ozLvQDm', output='data'):
     else:
         return None
     
-def single_stock(ticker, from_date, to_date, apikey='3CenRhJBzNqh2_C_5S38pOyt3ozLvQDm', df=True):
+def single_stock(ticker, from_date, to_date, apikey='', df=True):
+    if apikey == '':
+        apikey = os.getenv('POLYGON_APIKEY_1')
     url = f'https://api.polygon.io/v2/aggs/ticker/{ticker}/range/1/day/{from_date}/{to_date}?apiKey={apikey}'
     response = requests.get(url)
     data = response.json()
@@ -295,7 +299,9 @@ def get_max_value(var, database='main.db', table='stocks'):
     max = c.execute(f'SELECT MAX({var}) FROM {table};').fetchone()[0]
     return max
     
-def option_handler(apikey='3CenRhJBzNqh2_C_5S38pOyt3ozLvQDm', noqm=False, **kwargs):
+def option_handler(apikey='', noqm=False, **kwargs):
+    if apikey == '':
+        apikey = os.getenv('POLYGON_APIKEY_1')
     kwargs['apiKey'] = apikey
 
     if 'from_date' in kwargs:
@@ -310,7 +316,10 @@ def option_handler(apikey='3CenRhJBzNqh2_C_5S38pOyt3ozLvQDm', noqm=False, **kwar
     
     return output
         
-def make_request(baseurl, output='json', apikey='3CenRhJBzNqh2_C_5S38pOyt3ozLvQDm', **kwargs):
+def make_request(baseurl, output='json', apikey='', **kwargs):
+    if apikey == '':
+        apikey = os.getenv('POLYGON_APIKEY_1')
+
     if baseurl[:5] != 'https': baseurl = 'https://api.polygon.io/' + baseurl
     
     optionstring = option_handler(apikey, **kwargs) if 'cursor' not in baseurl else option_handler(apikey, noqm=True, **kwargs)
@@ -345,7 +354,10 @@ def get_stocks(tickers, startDate, allCols=False):
     df = pd.read_sql_query(query, conn)
     return df
 
-def get_crypto(ticker='BTCUSD', startDate = '2024-01-01', allCols=False, apiKey='3CenRhJBzNqh2_C_5S38pOyt3ozLvQDm'):
+def get_crypto(ticker='BTCUSD', startDate = '2024-01-01', allCols=False, apiKey=''):
+    if apikey == '':
+        apikey = os.getenv('POLYGON_APIKEY_1')
+
     endDate = datetime.now().strftime('%Y-%m-%d')
     url = f'https://api.polygon.io/v2/aggs/ticker/X:{ticker}/range/1/day/{startDate}/{endDate}?apiKey=' + apiKey
     response = requests.get(url)
