@@ -12,9 +12,12 @@ if len(sys.argv) > 1:
     if sys.argv[1] == 'test': test = True
     elif sys.argv[1] == 'pretend': pretend = True
 
+key_id = os.getenv('AWS_ACCESS_KEY_ID')
+acces_key = os.getenv('AWS_SECRET_ACCESS_KEY')
+
 session = boto3.Session(
-    aws_access_key_id="1c407b86-9d98-4a01-bf59-3b45eed92548",
-    aws_secret_access_key="EuwKhItrKdGMxjTLTrltOOX5aJQ0ozpp",
+    aws_access_key_id=key_id,
+    aws_secret_access_key=acces_key,
 )
 
 s3 = session.client(

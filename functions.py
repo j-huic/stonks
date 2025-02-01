@@ -1,12 +1,13 @@
 import pandas as pd
 import os
-from datetime import datetime, timedelta
 import csv
 import sys
 import requests
-import pandas_market_calendars as mcal
-from tqdm import tqdm
 import sqlite3
+import pandas_market_calendars as mcal
+import connectorx as cx
+from datetime import datetime, timedelta
+from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 def merge_dailies(filenames, path='day_aggs/'):
@@ -75,8 +76,10 @@ def hasduplicates(df, get=False, cols=['ticker', 'date']):
 def missingdates(existingdates, availabledates):
     return [x for x in availabledates if x not in existingdates]
 
-def daily_agg(date, apikey='3CenRhJBzNqh2_C_5S38pOyt3ozLvQDm', output='data'):
-    url = f'https://api.polygon.io/v2/aggs/grouped/locale/us/market/stocks/{date}?apiKey={apikey}'
+def daily_agg(date, apiKey='', output='data'):
+    if apiKey == '':
+        apiKey = os.getenv('POLYGON_APIKEY_1')
+    url = f'https://api.polygon.io/v2/aggs/grouped/locale/us/market/stocks/{date}?apiKey={apiKey}'
     response = requests.get(url)
     response = response.json()
 
@@ -103,14 +106,18 @@ def daily_agg(date, apikey='3CenRhJBzNqh2_C_5S38pOyt3ozLvQDm', output='data'):
     else:
         return None
     
-def single_stock(ticker, from_date, to_date, apikey='3CenRhJBzNqh2_C_5S38pOyt3ozLvQDm', df=True):
-    url = f'https://api.polygon.io/v2/aggs/ticker/{ticker}/range/1/day/{from_date}/{to_date}?apiKey={apikey}'
+def single_stock(ticker, from_date, to_date, apiKey='', df=True):
+    if apiKey == '':
+        apiKey = os.getenv('POLYGON_APIKEY_1')
+    url = f'https://api.polygon.io/v2/aggs/ticker/{ticker}/range/1/day/{from_date}/{to_date}?apiKey={apiKey}'
     response = requests.get(url)
     data = response.json()
 
     if df:
         df = pd.DataFrame(data['results'])
-    return data
+        return df
+    else:
+        return data
 
 def get_trading_days(from_date=None, to_date=None):
     nyse = mcal.get_calendar('NYSE')
@@ -249,8 +256,14 @@ def get_data(query):
     data = c.fetchall()
     return data
 
-def get_top_stocks(n=5000, since='2023-01-01', all=False):
-    select = '*' if all else 'ticker, date, close'
+def get_data_cx(query):
+    df = cx.read_sql('sqlite://main.db', query)
+
+    return df
+
+def get_top_stocks_query(n, since, vars):
+    columns = [f"CAST({col} AS FLOAT) AS {col}" if col == 'volume' else col for col in vars]
+    select = ', '.join(columns)
     timestamp = date_to_timestamp(since)
     command = f'''
         SELECT {select} FROM stocks
@@ -265,14 +278,31 @@ def get_top_stocks(n=5000, since='2023-01-01', all=False):
         '''
     return command
 
+def get_top_stocks_cx(n=5000, since='2023-01-01', vars=['ticker', 'date', 'close']):
+    query = get_top_stocks_query(n, since, vars)
+    print(query)
+    data = pd.DataFrame(get_data(query))
+    data.columns = vars
+
+    return data
+
+def get_top_stocks_cx(n=5000, since='2023-01-01', vars=['ticker', 'date', 'close']):
+    query = get_top_stocks_query(n, since, vars)
+    data = pd.DataFrame(get_data_cx(query))
+    data.columns = vars
+
+    return data
+
 def get_max_value(var, database='main.db', table='stocks'):
     conn = sqlite3.connect(database)
     c = conn.cursor()
     max = c.execute(f'SELECT MAX({var}) FROM {table};').fetchone()[0]
     return max
     
-def option_handler(apikey='3CenRhJBzNqh2_C_5S38pOyt3ozLvQDm', noqm=False, **kwargs):
-    kwargs['apiKey'] = apikey
+def option_handler(apiKey='', noqm=False, **kwargs):
+    if apiKey == '':
+        apiKey = os.getenv('POLYGON_APIKEY_1')
+    kwargs['apiKey'] = apiKey
 
     if 'from_date' in kwargs:
         kwargs['execution_date.gte'] = kwargs['from_date']
@@ -286,10 +316,13 @@ def option_handler(apikey='3CenRhJBzNqh2_C_5S38pOyt3ozLvQDm', noqm=False, **kwar
     
     return output
         
-def make_request(baseurl, output='json', apikey='3CenRhJBzNqh2_C_5S38pOyt3ozLvQDm', **kwargs):
+def make_request(baseurl, output='json', apiKey='', **kwargs):
+    if apiKey == '':
+        apiKey = os.getenv('POLYGON_APIKEY_1')
+
     if baseurl[:5] != 'https': baseurl = 'https://api.polygon.io/' + baseurl
     
-    optionstring = option_handler(apikey, **kwargs) if 'cursor' not in baseurl else option_handler(apikey, noqm=True, **kwargs)
+    optionstring = option_handler(apiKey, **kwargs) if 'cursor' not in baseurl else option_handler(apiKey, noqm=True, **kwargs)
     url = baseurl + optionstring
     
     if output == 'json':
@@ -307,3 +340,40 @@ def get_splits(output='json', **kwargs):
         output.extend(response['results'])
         
     return pd.DataFrame(output)
+
+def get_stocks(tickers, startDate, allCols=False):
+    conn = sqlite3.connect('main.db')
+
+    columns = '*' if allCols else 'date, ticker, close'
+    sql_tickers = ', '.join([f"'{t}'" for t in tickers])
+
+    query = f'''
+    SELECT {columns} FROM stocks WHERE ticker in ({sql_tickers}) AND date >= '{startDate}'
+    '''
+
+    df = pd.read_sql_query(query, conn)
+    return df
+
+def get_crypto(ticker='BTCUSD', startDate = '2024-01-01', allCols=False, apiKey=''):
+    if apiKey == '':
+        apiKey = os.getenv('POLYGON_APIKEY_1')
+
+    endDate = datetime.now().strftime('%Y-%m-%d')
+    url = f'https://api.polygon.io/v2/aggs/ticker/X:{ticker}/range/1/day/{startDate}/{endDate}?apiKey=' + apiKey
+    response = requests.get(url)
+    df = pd.DataFrame(response.json()['results'])
+    colmap = {
+        'v' : 'volume',
+        'wv' : 'volume_weighted',
+        'o' : 'open',
+        'c' : 'close',
+        'h' : 'high',
+        'l' : 'low',
+        't' : 'timestamp',
+        'n' : 'transactions'
+    }
+    df.rename(columns=colmap, inplace=True)
+    df['date'] = pd.to_datetime(df['timestamp'], unit='ms').dt.strftime('%Y-%m-%d')
+    df['ticker'] = ticker
+
+    return df if allCols else df[['date', 'ticker', 'close']]
