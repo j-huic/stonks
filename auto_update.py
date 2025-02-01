@@ -24,7 +24,7 @@ missingdates = get_trading_days(from_date=last_date)[1:]
 if len(missingdates) == 0:
         print('No missing dates')
         after = datetime.now()
-        loggign.info('No new data')
+        logging.info('No new data')
         sys.exit()
 elif len(missingdates) == 1:
     logging.info(f'1 missing date: {missingdates[0]}')
