@@ -16,3 +16,4 @@ diag.ipynb
 dbstuff.ipynb
 snoop.ipynb
 replacements.txt
+*.log
