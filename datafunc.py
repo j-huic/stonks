@@ -236,3 +236,29 @@ def get_quantiles(vector, index=False):
         return (np.array(quantiles) * 100)
     else:
         return quantiles
+
+def vectors_mean(vectors, weights, method='linear'):
+    vectors = np.array(vectors)
+    weights = np.array(weights)
+    
+    if method == 'linear':
+        return np.average(vectors, axis=0, weights=weights)
+    elif method == 'geometric':
+        weighted_quantiles = np.power(vectors, weights[:, np.newaxis])
+        geometric_mean_score = np.prod(weighted_quantiles, axis=0) ** (1 / np.sum(weights))
+
+        return geometric_mean_score
+
+def add_score(df, vars, weights=None, method='linear'):
+    # var_quantiles = [get_quantiles(df[var], index=True) for var in vars]
+    var_quantiles = [df[var].rank(pct=True) for var in vars]
+
+    if weights is None:
+        score = np.mean(var_quantiles, axis=0) 
+    else:
+        if len(vars) != len(weights): 
+            raise ValueError("Number of weights should match number of variables")
+
+        score = vectors_mean(var_quantiles, weights, method)
+
+    return score
