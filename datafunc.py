@@ -207,3 +207,32 @@ def remove_max(df, var):
 
 def remove_min(df, var):
     return df[df[var] != df[var].min()]
+
+def add_sma(df, n, group='ticker', var='close'):
+    sma = df.groupby(group)[var].transform(lambda x: talib.SMA(x, n))
+    return sma
+    
+def add_cmax(df, var='close', group='ticker'):
+    cmax = df.groupby(group)[var].transform(lambda x: x.cummax())
+    return cmax
+
+def add_cmin(df, var='close', group='ticker'):
+    cmin = df.groupby(group)[var].transform(lambda x: x.cummin())
+    return cmin
+    
+def add_ma_diff(df, n, group='ticker', var='close'):
+    df[f'ma{n}'] = add_sma(df, 252)
+    df[f'ma{n}_low'] = add_cmin(df, f'ma{n}')
+    df[f'ma{n}_high'] = add_cmax(df, f'ma{n}')
+    diff =  df[f'ma{n}_low'] / df[f'ma{n}_high']
+
+    return diff
+
+def get_quantiles(vector, index=False): 
+    n = len(vector)
+    quantiles = [sum(i > vector) / n for i in vector]
+
+    if index:
+        return (np.array(quantiles) * 100)
+    else:
+        return quantiles
