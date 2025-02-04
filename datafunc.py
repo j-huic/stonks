@@ -48,6 +48,15 @@ def plot_list(df, tickers, ma=5, var='close', fromzero=True):
     plt.tight_layout()
     plt.show()
 
+def plot_by_var(df, var, dir='max', n=12, fromzero=True):
+    now = df[df['date'] == df['date'].max()]
+    if dir == 'max':
+        tickerlist = list(now.nlargest(n, var)['ticker'])
+    elif dir == 'min':
+        tickerlist = list(now.nsmallest(n, var)['ticker'])
+
+    plot_list(df, tickerlist, ma=1)
+
 def plot_ax(df, ticker, ax, ma=5, var='close'):
     df = df.set_index('date', inplace=False)
     df[df.ticker == ticker][var].rolling(ma).mean().plot(ax=ax)
@@ -198,19 +207,3 @@ def remove_max(df, var):
 
 def remove_min(df, var):
     return df[df[var] != df[var].min()]
-
-def clean_splits(allsplits, startDate=None, endDate=None, cols=None):
-    if cols is None:
-        cols = ['execution_date', 'split_from', 'split_to', 'ticker']
-    if startDate is None:
-        startDate = '1977-01-01'
-    if endDate is None:
-        endDate = datetime.now().strftime('%Y-%m-%d')
-
-    relsplits = allsplits[(allsplits['execution_date'] > startDate) & 
-    (allsplits['execution_date'] < endDate)]
-
-    output = relsplits[cols]
-    output.columns = ['date', 'from', 'to', 'ticker']
-
-    return output
