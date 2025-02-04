@@ -5,22 +5,27 @@ import talib
 
 from functions import get_top_stocks_cx, get_top_stocks_query
 
-def plot(df, ticker='', ma=5, var='close', forceticker=0, plot=True):
-    if forceticker == 0:
+def plot(df, ticker, ma=[5], var='close', forceticker=False, plot=True):
+    if not forceticker:
         ticker = ticker.upper()
     else: 
         ticker = forceticker
 
     df = df.set_index('date', inplace=False)
-    df[df.ticker == ticker][var].rolling(ma).mean().plot()
+
+    for period in ma:
+        df[df.ticker == ticker][var].rolling(period).mean().plot()
+
+    plt.title(f'{ticker} - MA: {str(ma)}')
     plt.xticks(rotation=45)
+    plt.xlabel('')
     
     if plot:
         plt.show()
     else:
         return plt
 
-def plot_list(df, tickers, ma=5, var='close'):
+def plot_list(df, tickers, ma=5, var='close', fromzero=True):
     n = len(tickers)
     ncol = 3
     nrow = n // ncol + (n % ncol > 0)
@@ -34,6 +39,8 @@ def plot_list(df, tickers, ma=5, var='close'):
         ticker_df[var].rolling(ma).mean().plot(ax=ax)
         ax.set_title(ticker)
         ax.tick_params(axis='x', rotation=45)
+        if fromzero:
+            ax.set_ylim(bottom=0)
     
     for j in range(i + 1, len(axs)):
         axs[j].set_visible(False)
@@ -191,3 +198,19 @@ def remove_max(df, var):
 
 def remove_min(df, var):
     return df[df[var] != df[var].min()]
+
+def clean_splits(allsplits, startDate=None, endDate=None, cols=None):
+    if cols is None:
+        cols = ['execution_date', 'split_from', 'split_to', 'ticker']
+    if startDate is None:
+        startDate = '1977-01-01'
+    if endDate is None:
+        endDate = datetime.now().strftime('%Y-%m-%d')
+
+    relsplits = allsplits[(allsplits['execution_date'] > startDate) & 
+    (allsplits['execution_date'] < endDate)]
+
+    output = relsplits[cols]
+    output.columns = ['date', 'from', 'to', 'ticker']
+
+    return output
