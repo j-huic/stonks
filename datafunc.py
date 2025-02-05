@@ -262,3 +262,49 @@ def add_score(df, vars, weights=None, method='linear'):
         score = vectors_mean(var_quantiles, weights, method)
 
     return score
+
+def clean_splits(allsplits, startDate=None, endDate=None, cols=None):
+    if cols is None:
+        cols = ['execution_date', 'split_from', 'split_to', 'ticker']
+    if startDate is None:
+        startDate = '1977-01-01'
+    if endDate is None:
+        endDate = datetime.now().strftime('%Y-%m-%d')
+
+    relsplits = allsplits[(allsplits['execution_date'] > startDate) & 
+    (allsplits['execution_date'] < endDate)]
+
+    output = relsplits[cols]
+    output.columns = ['date', 'from', 'to', 'ticker']
+
+    return output
+
+def get_split_ratio(splits, ticker):
+    split = splits[splits.ticker == ticker].iloc[-1, :]
+    ratio = split['from'] / split['to']
+
+    return ratio
+
+def get_split_date(splits, ticker):
+    return splits[splits.ticker == ticker].date.iloc[-1]
+
+def find_split(df, ticker, ratio):
+    df = df[df.ticker == ticker].copy()
+    df['return'] = df['close'].pct_change() + 1
+    df['diff'] = abs(df['return'] - ratio)
+    row = df.loc[df['diff'].idxmin()]
+        
+    return row['date']
+
+def is_in_both(list_one, list_two):
+    output = []
+    if len(list_one) > len(list_two):
+        placeholder = list_one
+        list_one = list_two
+        list_two = list_one
+
+    for item in list_one:
+        if item in list_two:
+            output.append(item)
+
+    return output
