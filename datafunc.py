@@ -2,15 +2,18 @@ import pandas as pd
 import numpy as np 
 import matplotlib.pyplot as plt
 import talib
+from datetime import datetime
 
 from functions import get_top_stocks_cx, get_top_stocks_query
 
-def plot(df, ticker, ma=[5], var='close', forceticker=False, plot=True):
+def plot(df, ticker, ma=[5], var='close', forceticker=False, plot=True, vert=None):
     if not forceticker:
         ticker = ticker.upper()
     else: 
         ticker = forceticker
 
+    df = df[df['ticker'] == ticker].copy()
+    df['date'] = pd.to_datetime(df['date'])
     df = df.set_index('date', inplace=False)
 
     for period in ma:
@@ -19,6 +22,9 @@ def plot(df, ticker, ma=[5], var='close', forceticker=False, plot=True):
     plt.title(f'{ticker} - MA: {str(ma)}')
     plt.xticks(rotation=45)
     plt.xlabel('')
+
+    if vert:
+        plt.axvline(vert, color='red')
     
     if plot:
         plt.show()
