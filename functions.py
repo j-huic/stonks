@@ -377,3 +377,35 @@ def get_crypto(ticker='BTCUSD', startDate = '2024-01-01', allCols=False, apiKey=
     df['ticker'] = ticker
 
     return df if allCols else df[['date', 'ticker', 'close']]
+
+def get_ticker_type(ticker, apiKey=None):
+    if apiKey is None:
+        apiKey = os.getenv('POLYGON_APIKEY_1')
+    
+    url = f'https://api.polygon.io/v3/reference/tickers/{ticker}?apiKey={apiKey}'
+    response = requests.get(url).json()
+    return response
+    return response['results']['type']
+
+def get_stock_only_tickers(tickers=None, apiKey=None, params=None):
+    if apiKey is None:
+        apiKey = os.getenv('POLYGON_APIKEY_1')
+    
+    if params is None:
+        params = {
+            'market': 'stocks',
+            'type': 'CS',  # CS = Common Stock
+            'active': 'true',
+            'limit': 1000
+        }
+    
+    url = f'https://api.polygon.io/v3/reference/tickers?apiKey={apiKey}'
+    output = []
+    response = requests.get(url, params=params).json()
+    output.extend(response['results'])
+
+    while ('next_url' in response.keys()):
+        response = make_request(response['next_url'])
+        output.extend(response['results'])
+
+    return output
