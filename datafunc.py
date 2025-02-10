@@ -3,8 +3,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import talib
 from datetime import datetime
-
 from functions import get_top_stocks_cx, get_top_stocks_query
+
 
 def plot(df, ticker, ma=[5], var='close', forceticker=False, plot=True, vert=None):
     if not forceticker:
@@ -31,6 +31,7 @@ def plot(df, ticker, ma=[5], var='close', forceticker=False, plot=True, vert=Non
     else:
         return plt
 
+
 def plot_list(df, tickers, ma=5, var='close', fromzero=True):
     n = len(tickers)
     ncol = 3
@@ -54,33 +55,44 @@ def plot_list(df, tickers, ma=5, var='close', fromzero=True):
     plt.tight_layout()
     plt.show()
 
-def plot_by_var(df, var, dir='max', n=12, fromzero=True):
-    now = df[df['date'] == df['date'].max()]
-    if dir == 'max':
-        tickerlist = list(now.nlargest(n, var)['ticker'])
-    elif dir == 'min':
-        tickerlist = list(now.nsmallest(n, var)['ticker'])
 
-    plot_list(df, tickerlist, ma=1)
+def plot_by_var(df, var, method, ascending=False, n=12, fromzero=True):
+    if method == 'now':
+        now = df[df['date'] == df['date'].max()]
+        if not ascending:
+            tickerlist = list(now.nlargest(n, var)['ticker'])
+        else:
+            tickerlist = list(now.nsmallest(n, var)['ticker'])
+
+        plot_list(df, tickerlist, ma=1)
+    elif method == 'sum':
+        sums = df.groupby('ticker')[var].sum().reset_index()
+        srt = sums.sort_values(var, ascending=ascending).reset_index(drop=True)
+        plot_list(df, srt.ticker.iloc[:n])
+
 
 def plot_ax(df, ticker, ax, ma=5, var='close'):
     df = df.set_index('date', inplace=False)
     df[df.ticker == ticker][var].rolling(ma).mean().plot(ax=ax)
     plt.xticks(rotation=45)
 
+
 def plot_series(series, ma=5):
     sma = talib.SMA(np.array(series), timeperiod=ma)
     plt.plot(series)
+
 
 def getdistance(vector, n=20):
     ma = talib.MA(vector, timeperiod=n)
     stdev = talib.STDDEV(vector, timeperiod=n, nbdev=1)
     return (vector - ma) / stdev
 
+
 def talib_wrap(group, func, colname, *args, **kwargs):
     values = group[colname].values
     result = func(values, *args, **kwargs)
     return result
+
 
 def gethighestdistance(df, n=20):
     df['distance'] = df['close'].groupby(df['ticker']).transform(getdistance)
@@ -89,6 +101,7 @@ def gethighestdistance(df, n=20):
     highest = last.nlargest(n, 'distance').loc[:,['ticker', 'distance']]
     return lowest, highest
 
+
 def printhighestdistance(df, n=20):
     lowest, highest = gethighestdistance(df, n)
     print(str(n) + ' Lowest stocks by distance:')
@@ -96,14 +109,17 @@ def printhighestdistance(df, n=20):
     print('\n' + str(n) + ' Highest stocks by distance:')
     print(highest.to_string(index=False))
 
+
 def cumret(vector):
     returns = vector.pct_change()
     return (1 + returns).cumprod()
+
 
 def ranking(ticker, rankdict):
     if ticker not in rankdict:
         return None
     return int(rankdict[ticker])
+
 
 def hasduplicates(df, get=False, cols=['ticker', 'date']):
     duplicates = df.duplicated(cols)
@@ -111,6 +127,7 @@ def hasduplicates(df, get=False, cols=['ticker', 'date']):
         return duplicates.any()
     else: 
         return set(df[duplicates][cols[1]])
+
 
 def get_crossings(series, value=0, ma=1):
     if value == 0:
@@ -122,6 +139,7 @@ def get_crossings(series, value=0, ma=1):
     crossings = np.count_nonzero(sign_changes)
 
     return crossings
+
     
 def get_ranks(df):
     if 'value' not in df.columns: df['value'] = df['close'] * df['volume']
@@ -131,6 +149,7 @@ def get_ranks(df):
     rankdict = dict(zip(order, range(len(order))))
 
     return df['ticker'].map(rankdict)
+
     
 def get_constrained_volatile(df, l = 0.85, u = 1.15):
     df = df.copy()
@@ -146,23 +165,28 @@ def get_constrained_volatile(df, l = 0.85, u = 1.15):
 
     return bs_sorted
 
+
 def last_n_months(df, n):
     latest = pd.to_datetime(df['date'].max())
     cutoff = latest - pd.DateOffset(months=n)
     cutoff_str = cutoff.strftime('%Y-%m-%d')
     return df[df['date'] > cutoff_str]
 
+
 def get_tickers_between(df, l=0.75, u=1.25, var='cumret'):
     crs = df.groupby('ticker')[var].last()
     between = [t for t in crs.index if crs[t] >= l and crs[t] <= u]
     return between
 
+
 def get_between(df, l=0.75, u=1.25, var='cumret'):
     tickers = get_tickers_between(df, l=l, u=u, var=var)
     return df[df['ticker'].isin(tickers)].copy()
 
+
 def normalize(vector):
     return (vector - vector.mean()) / vector.std()
+
 
 def add_n_week_low(df, targetcol, n):
     nwklow = str(n) + '-wk-low'
@@ -170,21 +194,25 @@ def add_n_week_low(df, targetcol, n):
 
     return df
 
+
 def add_n_week_high(df, targetcol, n):
     nwkhigh = str(n) + '-wk-high'
     df[nwkhigh] = df.groupby('ticker')[targetcol].transform(lambda x: talib.MAX(x, timeperiod=n*5))
 
     return df
 
+
 def n_week_low(df, n, targetcol='close', groupcol='ticker'):
     nwl = df.groupby(groupcol)[targetcol].transform(lambda x: talib.MIN(x, timeperiod=n*5))
 
     return nwl
+
     
 def n_week_high(df, n, targetcol='close', groupcol='ticker'):
     nwh = df.groupby(groupcol)[targetcol].transform(lambda x: talib.MAX(x, timeperiod=n*5))
 
     return nwh
+
 
 def hist(df, var, bin=30, clip=0.95, latest=False):
     if latest:
@@ -194,6 +222,7 @@ def hist(df, var, bin=30, clip=0.95, latest=False):
     upper = df[var].quantile(clip+(1-clip)/2)
     clipped = df[var].clip(lower=lower, upper=upper)
     clipped.hist()
+
 
 def remove_outliers(df, vars, quantile=0.99, onesided=False):
     for var in vars:
@@ -208,23 +237,29 @@ def remove_outliers(df, vars, quantile=0.99, onesided=False):
 
     return df
 
+
 def remove_max(df, var):
     return df[df[var] != df[var].max()]
+
 
 def remove_min(df, var):
     return df[df[var] != df[var].min()]
 
+
 def add_sma(df, n, group='ticker', var='close'):
     sma = df.groupby(group)[var].transform(lambda x: talib.SMA(x, n))
     return sma
+
     
 def add_cmax(df, var='close', group='ticker'):
     cmax = df.groupby(group)[var].transform(lambda x: x.cummax())
     return cmax
 
+
 def add_cmin(df, var='close', group='ticker'):
     cmin = df.groupby(group)[var].transform(lambda x: x.cummin())
     return cmin
+
     
 def add_ma_diff(df, n, group='ticker', var='close'):
     df[f'ma{n}'] = add_sma(df, 252)
@@ -234,6 +269,7 @@ def add_ma_diff(df, n, group='ticker', var='close'):
 
     return diff
 
+
 def get_quantiles(vector, index=False): 
     n = len(vector)
     quantiles = [sum(i > vector) / n for i in vector]
@@ -242,6 +278,7 @@ def get_quantiles(vector, index=False):
         return (np.array(quantiles) * 100)
     else:
         return quantiles
+
 
 def vectors_mean(vectors, weights, method='linear'):
     vectors = np.array(vectors)
@@ -254,6 +291,7 @@ def vectors_mean(vectors, weights, method='linear'):
         geometric_mean_score = np.prod(weighted_quantiles, axis=0) ** (1 / np.sum(weights))
 
         return geometric_mean_score
+
 
 def add_score(df, vars, weights=None, method='linear'):
     # var_quantiles = [get_quantiles(df[var], index=True) for var in vars]
@@ -268,6 +306,7 @@ def add_score(df, vars, weights=None, method='linear'):
         score = vectors_mean(var_quantiles, weights, method)
 
     return score
+
 
 def clean_splits(allsplits, startDate=None, endDate=None, cols=None):
     if cols is None:
@@ -285,14 +324,17 @@ def clean_splits(allsplits, startDate=None, endDate=None, cols=None):
 
     return output
 
+
 def get_split_ratio(splits, ticker):
     split = splits[splits.ticker == ticker].iloc[-1, :]
     ratio = split['from'] / split['to']
 
     return ratio
 
+
 def get_split_date(splits, ticker):
     return splits[splits.ticker == ticker].date.iloc[-1]
+
 
 def find_split(df, ticker, ratio):
     df = df[df.ticker == ticker].copy()
@@ -301,6 +343,7 @@ def find_split(df, ticker, ratio):
     row = df.loc[df['diff'].idxmin()]
         
     return row['date']
+
 
 def is_in_both(list_one, list_two):
     output = []
@@ -314,3 +357,21 @@ def is_in_both(list_one, list_two):
             output.append(item)
 
     return output
+
+
+def get_ma_order(df, mas, strict=True, bearish=True):
+    df = df.copy()
+    mas.sort()
+    for ma in mas:
+        df[f'ma{ma}'] = add_sma(df, ma)
+
+    for i, ma in enumerate(mas[:-1]):
+        if bearish:
+            df[f'madom{i}'] = df[f'ma{ma}'] < df[f'ma{mas[i + 1]}']
+        else:
+            df[f'madom{i}'] = df[f'ma{ma}'] > df[f'ma{mas[i + 1]}']
+
+    if strict:
+        return df[[f'madom{i}' for i in range(len(mas)-1)]].all(axis=1)
+    else:
+        return df[[f'madom{i}' for i in range(len(mas)-1)]].sum(axis=1)
