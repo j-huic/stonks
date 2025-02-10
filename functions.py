@@ -1,7 +1,6 @@
 import pandas as pd
 import os
 import csv
-import sys
 import requests
 import sqlite3
 import pandas_market_calendars as mcal
@@ -10,31 +9,43 @@ from datetime import datetime, timedelta
 from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+
+def date_from_filename(filename):
+    date_part = filename.split('/')[1].split('.')[0]
+    date = datetime.strptime(date_part, '%Y-%m-%d').date()
+
+    return date
+
+
 def merge_dailies(filenames, path='day_aggs/'):
     filenames = [path + f for f in filenames]
-    datelist = [datetime.strptime(f.split('/')[1].split('.')[0], '%Y-%m-%d').date() for f in filenames]
+    datelist = [date_from_filename(f) for f in filenames]
     dflist = [pd.read_csv(f) for f in filenames]
 
-    for i,j in zip(dflist, datelist):
-        i['date'] = j
-    
+    for df, date in zip(dflist, datelist):
+        df['date'] = date
     all = pd.concat(dflist)
 
     return all
 
-def get_last_line(file_name='all_dailies.csv'):
-    with open(file_name, 'rb') as f:
+
+def get_last_line(filename='all_dailies.csv'):
+    with open(filename, 'rb') as f:
         f.seek(-2, os.SEEK_END)
         while f.read(1) != b'\n':
             f.seek(-2, os.SEEK_CUR)
         last_line = f.readline().decode()
+
     return last_line
+
 
 def get_last_date(filename='all_dailies.csv'):
     most_recent_date_string = get_last_line(filename).split(",")[-1].strip('\r\n"')
-    most_recent_date = datetime.date(datetime.strptime(most_recent_date_string, "%Y-%m-%d"))
+    parsed_date = datetime.strptime(most_recent_date_string, "%Y-%m-%d")
+    most_recent_date = datetime.date(parsed_date)
 
     return most_recent_date
+
 
 def append_csv(oldfile, newfile):
     with open(oldfile, 'a', newline='') as outfile:
@@ -45,41 +56,57 @@ def append_csv(oldfile, newfile):
             for row in reader:
                 writer.writerow(row)
 
+
 def checkmissing(file='all_dailies.csv', dir='day_aggs'):
     files = os.listdir(dir)
-    filedates = [datetime.strptime(f.split('.')[0], '%Y-%m-%d').date() for f in files]
+    dates = [datetime.strptime(f.split('.')[0], '%Y-%m-%d').date() for f in files]
     most_recent_date = get_last_date(file)
-    recentfiles = [(i,j) for i,j in zip(files, filedates) if j > most_recent_date]
-    
-    if len(recentfiles) == 0: return None
-    output = {'filenames': [t[0] for t in recentfiles], 'dates': [t[1] for t in recentfiles]}
+    recent_files = [
+        (file, date) for file, date in zip(files, dates)
+        if date > most_recent_date
+    ]
+
+    if len(recent_files) == 0:
+        return None
+
+    output = {
+        'filenames': [t[0] for t in recent_files],
+        'dates': [t[1] for t in recent_files]
+        }
 
     return output
+
 
 def datefromfilename(filename, datetime=False):
     items = filename.split('/')
     lastitem = items[-1]
     datestring = lastitem.split('.')[0]
-    
+
     if datetime:
         return datetime.strptime(datestring, '%Y-%m-%d')
     else:
         return datestring
 
+
 def hasduplicates(df, get=False, cols=['ticker', 'date']):
     duplicates = df.duplicated(cols)
     if not get:
         return duplicates.any()
-    else: 
+    else:
         return set(df[duplicates][cols[1]])
+
 
 def missingdates(existingdates, availabledates):
     return [x for x in availabledates if x not in existingdates]
 
-def daily_agg(date, apiKey='', output='data'):
-    if apiKey == '':
-        apiKey = os.getenv('POLYGON_APIKEY_1')
-    url = f'https://api.polygon.io/v2/aggs/grouped/locale/us/market/stocks/{date}?apiKey={apiKey}'
+
+def daily_agg(date, apikey=None, output='data'):
+    if apikey is None:
+        apikey = os.getenv('POLYGON_APIKEY_1')
+    url = (
+        f'https://api.polygon.io/v2/aggs/grouped/locale/us/market/stocks/'
+        f'{date}?apiKey={apikey}'
+        )
     response = requests.get(url)
     response = response.json()
 
@@ -96,20 +123,25 @@ def daily_agg(date, apiKey='', output='data'):
             return None
     else:
         return None
-    
-    if output == 'data': 
+
+    if output == 'data':
         return response['results']
-    elif output == 'df': 
-        return pd.DataFrame(data['results'])
+    elif output == 'df':
+        return pd.DataFrame(response['results'])
     elif output == 'all':
         return response
     else:
         return None
-    
-def single_stock(ticker, from_date, to_date, apiKey='', df=True):
-    if apiKey == '':
-        apiKey = os.getenv('POLYGON_APIKEY_1')
-    url = f'https://api.polygon.io/v2/aggs/ticker/{ticker}/range/1/day/{from_date}/{to_date}?apiKey={apiKey}'
+
+
+def single_stock(ticker, from_date, to_date, apikey=None, df=True):
+    if apikey is None:
+        apikey = os.getenv('POLYGON_APIKEY_1')
+
+    url = (
+        f'https://api.polygon.io/v2/aggs/ticker/{ticker}/range/1/day/'
+        f'{from_date}/{to_date}?apiKey={apikey}'
+    )
     response = requests.get(url)
     data = response.json()
 
@@ -118,6 +150,7 @@ def single_stock(ticker, from_date, to_date, apiKey='', df=True):
         return df
     else:
         return data
+
 
 def get_trading_days(from_date=None, to_date=None):
     nyse = mcal.get_calendar('NYSE')
@@ -129,32 +162,34 @@ def get_trading_days(from_date=None, to_date=None):
 
     trading_days = nyse.valid_days(start_date=from_date, end_date=to_date)
     trading_dates = [day.strftime('%Y-%m-%d') for day in trading_days]
-    
+
     return trading_dates
+
 
 def loadtest(filename, onecol=False):
     before = datetime.now()
-    
+
     if onecol:
-        df = pd.read_csv(filename, usecols=[0])
+        df = pd.read_csv(filename, usecols=[0])  # noqa: F841
     else:
-        df = pd.read_csv(filename)
+        df = pd.read_csv(filename)  # noqa: F841
 
     after = datetime.now()
     print((after - before).total_seconds())
 
+
 def datelist_to_df(datelist, json=False):
     before = datetime.now()
-    
+
     alljson = []
-    for i, date in enumerate(tqdm(datelist)):
+    for date in tqdm(datelist):
         data = daily_agg(date)
         if data is not None:
             alljson.extend(data)
-    
+
     after = datetime.now()
     file_request_print(len(datelist), after - before)
-    
+
     if len(alljson) == 0:
         return None
     elif json:
@@ -162,11 +197,11 @@ def datelist_to_df(datelist, json=False):
     else:
         return pd.DataFrame(alljson)
 
+
 def datelist_to_df_parallel(datelist, max_workers=11, json=False, noprint=False):
     before = datetime.now()
-    
     alljson = []
-    
+
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = [executor.submit(daily_agg, date) for date in datelist]
         for future in tqdm(as_completed(futures), total=len(datelist), disable=noprint):
@@ -176,18 +211,19 @@ def datelist_to_df_parallel(datelist, max_workers=11, json=False, noprint=False)
                     alljson.extend(data)
             except Exception as e:
                 print(f"Error fetching data: {e}")
-    
+
     after = datetime.now()
 
     if not noprint:
-    	file_request_print(len(datelist), after - before)
-    
+        file_request_print(len(datelist), after - before)
+
     if len(alljson) == 0:
         return None
     elif json:
         return alljson
     else:
         return pd.DataFrame(alljson).sort_values('t')
+
 
 def file_request_print(n_files, timedelta):
     seconds = timedelta.total_seconds()
@@ -198,32 +234,42 @@ def file_request_print(n_files, timedelta):
         if minutes == 0:
             print(f'{n_files} file request done in {seconds} seconds')
         else:
-            print(f'{n_files} file request done in {minutes} minutes and {round(seconds, 2)} seconds')
+            print(
+                f'{n_files} file request done '
+                f'in {minutes} minutes and {round(seconds, 2)} seconds')
     else:
         if minutes == 0:
             print(f'{n_files} file requests done in {seconds} seconds')
         else:
-            print(f'{n_files} file requests done in {minutes} minutes and {round(seconds, 2)} seconds')
+            print(
+                f'{n_files} file requests done '
+                f'in {minutes} minutes and {round(seconds, 2)} seconds'
+            )
 
 
 def date_from_timestamp(timestamp):
     return datetime.fromtimestamp(timestamp / 1000).strftime('%Y-%m-%d')
 
+
 def timestamp_to_date(timestamp):
     return datetime.fromtimestamp(timestamp / 1000).strftime('%Y-%m-%d')
+
 
 def timestamp_from_date(datestring):
     return int(datetime.strptime(datestring, '%Y-%m-%d').timestamp() * 1000)
 
+
 def date_to_timestamp(datestring):
     return int(datetime.strptime(datestring, '%Y-%m-%d').timestamp() * 1000)
+
 
 def get_table_colnames(table='stocks', database='main.db'):
     conn = sqlite3.connect(database)
     c = conn.cursor()
     info = c.execute(f'PRAGMA table_info({table})').fetchall()
-    
+
     return [i[1] for i in info]
+
 
 def timedelta_to_str(td):
     seconds = td.total_seconds()
@@ -238,15 +284,17 @@ def timedelta_to_str(td):
     else:
         return f'{round(seconds, 4)} seconds'
 
+
 def date_separation(datelist):
     if len(datelist) < 2:
         return 0
-        
+
     datestrings = sorted(list(set(datelist)))
     dates = [datetime.strptime(date, '%Y-%m-%d') for date in datestrings]
     timedeltas = [dates[i] - dates[i-1] for i in range(1, len(dates))]
 
     return max(timedeltas).days
+
 
 def get_data(query):
     conn = sqlite3.connect('main.db')
@@ -254,15 +302,22 @@ def get_data(query):
 
     c.execute(query)
     data = c.fetchall()
+
     return data
+
 
 def get_data_cx(query):
     df = cx.read_sql('sqlite://main.db', query)
 
     return df
 
+
 def get_top_stocks_query(n, since, vars):
-    columns = [f"CAST({col} AS FLOAT) AS {col}" if col == 'volume' else col for col in vars]
+    columns = [
+        f"CAST({col} AS FLOAT) AS {col}"
+        if col == 'volume'
+        else col for col in vars
+    ]
     select = ', '.join(columns)
     timestamp = date_to_timestamp(since)
     command = f'''
@@ -276,33 +331,30 @@ def get_top_stocks_query(n, since, vars):
             LIMIT {n}
         )
         '''
+
     return command
 
-def get_top_stocks_cx(n=5000, since='2023-01-01', vars=['ticker', 'date', 'close']):
-    query = get_top_stocks_query(n, since, vars)
-    print(query)
+
+def get_top_stocks_cx(n=5000, from_date='2023-01-01', vars=['ticker', 'date', 'close']):
+    query = get_top_stocks_query(n, from_date, vars)
     data = pd.DataFrame(get_data(query))
     data.columns = vars
 
     return data
 
-def get_top_stocks_cx(n=5000, since='2023-01-01', vars=['ticker', 'date', 'close']):
-    query = get_top_stocks_query(n, since, vars)
-    data = pd.DataFrame(get_data_cx(query))
-    data.columns = vars
-
-    return data
 
 def get_max_value(var, database='main.db', table='stocks'):
     conn = sqlite3.connect(database)
     c = conn.cursor()
     max = c.execute(f'SELECT MAX({var}) FROM {table};').fetchone()[0]
+
     return max
-    
-def option_handler(apiKey='', noqm=False, **kwargs):
-    if apiKey == '':
-        apiKey = os.getenv('POLYGON_APIKEY_1')
-    kwargs['apiKey'] = apiKey
+
+
+def option_handler(apikey=None, noqm=False, **kwargs):
+    if apikey is None:
+        apikey = os.getenv('POLYGON_APIKEY_1')
+    kwargs['apiKey'] = apikey
 
     if 'from_date' in kwargs:
         kwargs['execution_date.gte'] = kwargs['from_date']
@@ -310,25 +362,32 @@ def option_handler(apiKey='', noqm=False, **kwargs):
     if 'to_date' in kwargs:
         kwargs['execution_date.lte'] = kwargs['to_date']
         del kwargs['to_date']
-        
+
     options = [f'{key}={value}' for key, value in kwargs.items()]
     output = '?' + '&'.join(options) if not noqm else '&' + '&'.join(options)
-    
-    return output
-        
-def make_request(baseurl, output='json', apiKey='', **kwargs):
-    if apiKey == '':
-        apiKey = os.getenv('POLYGON_APIKEY_1')
 
-    if baseurl[:5] != 'https': baseurl = 'https://api.polygon.io/' + baseurl
-    
-    optionstring = option_handler(apiKey, **kwargs) if 'cursor' not in baseurl else option_handler(apiKey, noqm=True, **kwargs)
-    url = baseurl + optionstring
-    
+    return output
+
+
+def make_request(base_url, output='json', apikey=None, **kwargs):
+    if apikey is None:
+        apikey = os.getenv('POLYGON_APIKEY_1')
+
+    if base_url[:5] != 'https':
+        base_url = 'https://api.polygon.io/' + base_url
+
+    option_string = (
+        option_handler(apikey, **kwargs)
+        if 'cursor' not in base_url
+        else option_handler(apikey, noqm=True, **kwargs)
+    )
+    url = base_url + option_string
+
     if output == 'json':
         return requests.get(url).json()
     else:
         return requests.get(url)
+
 
 def get_splits(output='json', **kwargs):
     output = []
@@ -338,28 +397,37 @@ def get_splits(output='json', **kwargs):
     while ('next_url' in response.keys()):
         response = make_request(response['next_url'])
         output.extend(response['results'])
-        
+
     return pd.DataFrame(output)
 
-def get_stocks(tickers, startDate, allCols=False):
-    conn = sqlite3.connect('main.db')
 
-    columns = '*' if allCols else 'date, ticker, close'
+def get_stocks(tickers, from_date, all_cols=False):
+    conn = sqlite3.connect('main.db')
+    columns = '*' if all_cols else 'date, ticker, close'
     sql_tickers = ', '.join([f"'{t}'" for t in tickers])
 
     query = f'''
-    SELECT {columns} FROM stocks WHERE ticker in ({sql_tickers}) AND date >= '{startDate}'
+    SELECT {columns}
+    FROM stocks
+    WHERE ticker in ({sql_tickers})
+    AND date >= '{from_date}'
     '''
 
     df = pd.read_sql_query(query, conn)
+
     return df
 
-def get_crypto(ticker='BTCUSD', startDate = '2024-01-01', allCols=False, apiKey=''):
-    if apiKey == '':
-        apiKey = os.getenv('POLYGON_APIKEY_1')
 
-    endDate = datetime.now().strftime('%Y-%m-%d')
-    url = f'https://api.polygon.io/v2/aggs/ticker/X:{ticker}/range/1/day/{startDate}/{endDate}?apiKey=' + apiKey
+def get_crypto(ticker='BTCUSD', from_date='2024-01-01', all_cols=False, apikey=None):
+    if apikey is None:
+        apikey = os.getenv('POLYGON_APIKEY_1')
+
+    to_date = datetime.now().strftime('%Y-%m-%d')
+    url = (
+        f'https://api.polygon.io/v2/aggs/ticker/X:{ticker}/range/1/day/'
+        f'{from_date}/{to_date}?apiKey={apikey}'
+    )
+
     response = requests.get(url)
     df = pd.DataFrame(response.json()['results'])
     colmap = {
@@ -372,25 +440,28 @@ def get_crypto(ticker='BTCUSD', startDate = '2024-01-01', allCols=False, apiKey=
         't' : 'timestamp',
         'n' : 'transactions'
     }
+
     df.rename(columns=colmap, inplace=True)
     df['date'] = pd.to_datetime(df['timestamp'], unit='ms').dt.strftime('%Y-%m-%d')
     df['ticker'] = ticker
 
-    return df if allCols else df[['date', 'ticker', 'close']]
+    return df if all_cols else df[['date', 'ticker', 'close']]
 
-def get_ticker_type(ticker, apiKey=None):
-    if apiKey is None:
-        apiKey = os.getenv('POLYGON_APIKEY_1')
-    
-    url = f'https://api.polygon.io/v3/reference/tickers/{ticker}?apiKey={apiKey}'
+
+def get_ticker_type(ticker, apikey=None):
+    if apikey is None:
+        apikey = os.getenv('POLYGON_APIKEY_1')
+
+    url = f'https://api.polygon.io/v3/reference/tickers/{ticker}?apiKey={apikey}'
     response = requests.get(url).json()
-    return response
-    return response['results']['type']
 
-def get_stock_only_tickers(tickers=None, apiKey=None, params=None):
-    if apiKey is None:
-        apiKey = os.getenv('POLYGON_APIKEY_1')
-    
+    return response
+
+
+def get_stock_only_tickers(tickers=None, apikey=None, params=None):
+    if apikey is None:
+        apikey = os.getenv('POLYGON_APIKEY_1')
+
     if params is None:
         params = {
             'market': 'stocks',
@@ -398,8 +469,8 @@ def get_stock_only_tickers(tickers=None, apiKey=None, params=None):
             'active': 'true',
             'limit': 1000
         }
-    
-    url = f'https://api.polygon.io/v3/reference/tickers?apiKey={apiKey}'
+
+    url = f'https://api.polygon.io/v3/reference/tickers?apiKey={apikey}'
     output = []
     response = requests.get(url, params=params).json()
     output.extend(response['results'])
