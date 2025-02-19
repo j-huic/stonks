@@ -55,9 +55,10 @@ def plot_list(df, tickers, ma=5, var='close', fromzero=True):
     plt.show()
 
 
-def plot_by_var(df, var, method, ascending=False, n=12, fromzero=True):
+def plot_by_var(df, var, method, ascending=False, n=12, fromzero=True, from_date=None):
     if method == 'now':
         now = df[df['date'] == df['date'].max()]
+
         if not ascending:
             tickerlist = list(now.nlargest(n, var)['ticker'])
         else:
@@ -65,7 +66,8 @@ def plot_by_var(df, var, method, ascending=False, n=12, fromzero=True):
 
         plot_list(df, tickerlist, ma=1)
     elif method == 'sum':
-        sums = df.groupby('ticker')[var].sum().reset_index()
+        if from_date is None: from_date = df['date'].min()
+        sums = df[df['date'] > from_date].groupby('ticker')[var].sum().reset_index()
         srt = sums.sort_values(var, ascending=ascending).reset_index(drop=True)
         plot_list(df, srt.ticker.iloc[:n])
 

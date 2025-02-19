@@ -362,6 +362,12 @@ def option_handler(apikey=None, noqm=False, **kwargs):
     if 'to_date' in kwargs:
         kwargs['execution_date.lte'] = kwargs['to_date']
         del kwargs['to_date']
+    if 'from_date_ex' in kwargs:
+        kwargs['execution_date.gt'] = kwargs['from_date_ex']
+        del kwargs['from_date_ex']
+    if 'to_date_ex' in kwargs:
+        kwargs['execution_date.lt'] = kwargs['to_date_ex']
+        del kwargs['to_date_ex']
 
     options = [f'{key}={value}' for key, value in kwargs.items()]
     output = '?' + '&'.join(options) if not noqm else '&' + '&'.join(options)
@@ -480,3 +486,39 @@ def get_stock_only_tickers(tickers=None, apikey=None, params=None):
         output.extend(response['results'])
 
     return output
+
+
+def adjust_presplit_price(df, ticker, ratio, cols=['close']):
+    for col in cols:
+        df.loc[df['ticker'] == ticker, col] *= ratio
+
+    return df
+
+
+def adjust_presplit_price(df, ticker, ratio, cols=['close'], invcols=None):
+    for col in cols:
+        df.loc[df['ticker'] == ticker, col] *= ratio
+    
+    if invcols is not None:
+        for col in invcols:
+            df.loc[df['ticker'] == ticker, col] /= ratio
+
+    return df
+
+
+def adjust_presplit_price_db(conn, ticker, ratio):
+    cursor = conn.cursor()
+    query = f'''
+        UPDATE stocks
+        SET
+            volume_weighted = volume_weighted * ?
+            open = open * ?
+            close = close * ?
+            high = high * ?
+            low = low * ?
+            volume = volume / ?
+        WHERE ticker = ?
+    '''
+    params = (ratio,) * 6 + (ticker,)
+    cursor.execute(query, params)
+    conn.commit()
