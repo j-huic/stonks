@@ -55,12 +55,21 @@ if new_data is None:
     sys.exit()
 
 # new date column, align colnames, and append
-# new_data['date'] = new_data['timestamp'].apply(date_from_timestamp)
 new_data['date'] = new_data['t'].apply(date_from_timestamp)
 new_data.columns = get_table_colnames(table=tablename, database=db_uri)
 
 print('Updating Database...')
 new_data.to_sql(tablename, conn, if_exists='append', index=False)
+
+# # check for splits
+# splits = get_splits(from_date=missingdates[0], to_date=missingdates[:-1])
+# print(f'There have been {splits.shape[0]} splits since last update')
+# print('Adjusting for splits in database...')
+# for index, row in splits.iterrows():
+#     ratio = row['split_from'] / row['split_to']
+#     adjust_presplit_price_db(conn, row['ticker'], ratio)
+#
+
 
 after = datetime.now()
 print('Total time elapsed: ' + str(round((after - before).total_seconds(), 2)) + ' seconds')

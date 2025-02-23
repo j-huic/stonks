@@ -18,3 +18,4 @@ snoop.ipynb
 replacements.txt
 *.log
 *.pkl
+.env
