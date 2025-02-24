@@ -55,7 +55,7 @@ def plot_list(df, tickers, ma=5, var='close', fromzero=True):
     plt.show()
 
 
-def plot_by_var(df, var, method, ascending=False, n=12, fromzero=True, from_date=None):
+def plot_by_var(df, var, method, ascending=False, n=12, from_date=None):
     if method == 'now':
         now = df[df['date'] == df['date'].max()]
 
@@ -267,9 +267,10 @@ def add_cmin(df, var='close', group='ticker'):
 
 
 def add_ma_diff(df, n, group='ticker', var='close'):
-    df[f'ma{n}'] = add_sma(df, 252)
-    df[f'ma{n}_low'] = add_cmin(df, f'ma{n}')
-    df[f'ma{n}_high'] = add_cmax(df, f'ma{n}')
+    df = df.copy()
+    df[f'ma{n}'] = add_sma(df, n, var=var, group=group)
+    df[f'ma{n}_low'] = add_cmin(df, var=f'ma{n}', group=group)
+    df[f'ma{n}_high'] = add_cmax(df, var=f'ma{n}', group=group)
     diff = df[f'ma{n}_low'] / df[f'ma{n}_high']
 
     return diff
