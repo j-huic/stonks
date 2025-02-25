@@ -344,6 +344,7 @@ def get_split_ratio(splits, ticker):
 
 
 def get_split_date(splits, ticker):
+
     return splits[splits.ticker == ticker].date.iloc[-1]
 
 
@@ -354,6 +355,26 @@ def find_split(df, ticker, ratio):
     row = df.loc[df['diff'].idxmin()]
 
     return row['date']
+
+
+def validate_split(ratio, ret):
+    diff = abs((ratio / ret - 1))
+    if (ratio > 1.5) & (ret > 1.5):
+        if diff < 0.3:
+            return 1
+        elif diff < 0.5:
+            return 0.5
+        elif diff < 1.5:
+            return 0.25
+        else:
+            return 0
+    elif (ratio < 0.5) & (ret < 0.5):
+        if diff < 0.3:
+            return 1
+        elif diff > 0.5:
+            return 0.25
+        elif diff > 1:
+            return 0
 
 
 def is_in_both(list_one, list_two):

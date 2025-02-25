@@ -407,14 +407,17 @@ def get_splits(output='json', **kwargs):
     return pd.DataFrame(output)
 
 
-def get_stocks(tickers, from_date, all_cols=False):
-    conn = sqlite3.connect('main.db')
+def get_stocks(tickers, from_date, all_cols=False, db_uri=None):
+    if db_uri is None:
+        conn = sqlite3.connect('main.db')
+    else:
+        conn = sqlite3.connect(db_uri)
     columns = '*' if all_cols else 'date, ticker, close'
     sql_tickers = ', '.join([f"'{t}'" for t in tickers])
 
     query = f'''
     SELECT {columns}
-    FROM stocks
+    FROM Stocks
     WHERE ticker in ({sql_tickers})
     AND date >= '{from_date}'
     '''
