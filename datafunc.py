@@ -358,8 +358,8 @@ def find_split(df, ticker, ratio):
 
 
 def validate_split(ratio, ret):
-    diff = abs((ratio / ret - 1))
-    if (ratio > 1.5) & (ret > 1.5):
+    diff = abs(ratio / ret - 1)
+    if ratio > 1.5:
         if diff < 0.3:
             return 1
         elif diff < 0.5:
