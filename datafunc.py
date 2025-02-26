@@ -359,22 +359,37 @@ def find_split(df, ticker, ratio):
 
 def validate_split(ratio, ret):
     diff = abs(ratio / ret - 1)
-    if ratio > 1.5:
-        if diff < 0.3:
-            return 1
-        elif diff < 0.5:
-            return 0.5
-        elif diff < 1.5:
-            return 0.25
+    grade = None
+    if (ratio > 3) & (ret > 3):
+        if diff < 2:
+            grade = 1
         else:
-            return 0
+            grade = 0.75
+    elif ratio > 1.5:
+        if diff < 0.3:
+            grade = 1
+        elif diff < 0.5:
+            grade = 0.5
+        elif diff < 1.5:
+            grade = 0.25
+        else:
+            grade = 0
     elif (ratio < 0.5) & (ret < 0.5):
         if diff < 0.3:
-            return 1
+            grade = 1
         elif diff > 0.5:
-            return 0.25
+            grade = 0.25
         elif diff > 1:
-            return 0
+            grade = 0
+    elif ratio < 0.8:
+        if diff < 0.1:
+            grade = 1
+        elif diff < 0.3:
+            grade = 0.75
+        else:
+            grade = 0.25
+
+    return (grade, diff)
 
 
 def is_in_both(list_one, list_two):
