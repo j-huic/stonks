@@ -19,3 +19,5 @@ replacements.txt
 *.log
 *.pkl
 .env
+splitignore.json
+splitnotes.txt
