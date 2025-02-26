@@ -388,6 +388,11 @@ def validate_split(ratio, ret):
             grade = 0.75
         else:
             grade = 0.25
+    else:
+        if diff < 0.1:
+            grade = 1
+        else:
+            grade = 0.5
 
     return (grade, diff)
 
