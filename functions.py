@@ -520,7 +520,7 @@ def adjust_presplit_price_db(conn, ticker, ratio, date=None):
 
     if date is not None:
         query += ' AND date < ?'
-        params.append(date)
+        params = params + (date,)
 
     cursor.execute(query, tuple(params))
     conn.commit()
