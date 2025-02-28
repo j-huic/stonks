@@ -100,6 +100,10 @@ def missingdates(existingdates, availabledates):
     return [x for x in availabledates if x not in existingdates]
 
 
+def in_both(a, b):
+    return [item for item in a if item in b]
+
+
 def daily_agg(date, apikey=None, output='data'):
     if apikey is None:
         apikey = os.getenv('POLYGON_APIKEY_1')
@@ -343,8 +347,7 @@ def get_top_stocks_cx(n=5000, from_date='2023-01-01', vars=['ticker', 'date', 'c
     return data
 
 
-def get_max_value(var, database='main.db', table='stocks'):
-    conn = sqlite3.connect(database)
+def get_max_value(var, conn, table='stocks'):
     c = conn.cursor()
     max = c.execute(f'SELECT MAX({var}) FROM {table};').fetchone()[0]
 
@@ -526,22 +529,33 @@ def adjust_presplit_price_db(conn, ticker, ratio, date=None):
     conn.commit()
 
 
-def add_log(message, filename='info.log', verbose=False):
+def add_log(message, filename='info.log'):
     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     with open(filename, 'a') as file:
         file.write(f'[{timestamp}]: {message}\n')
 
-    if verbose:
-        print(message + '\n')
 
-
-def get_all_tickers(db_uri=None, table='stocks'):
-    if db_uri is None:
+def get_all_tickers(db_uri=None, conn=None, table='stocks', onlyactive=False):
+    if conn is None:
         db_uri = os.getenv('DB_URI_SHORT')
+        conn = sqlite3.connect(db_uri)
 
-    conn = sqlite3.connect(db_uri)
     cursor = conn.cursor()
-    response = cursor.execute(f'SELECT DISTINCT(ticker) from {table}').fetchall()
+
+    query = f'''
+    SELECT DISTINCT ticker
+    FROM {table}
+    '''
+
+    if onlyactive:
+        query += f''' 
+        WHERE date = (
+            SELECT max(date)
+            FROM stocks
+        )
+        '''
+    
+    response = cursor.execute(query).fetchall()
     
     return [item[0] for item in response]
 

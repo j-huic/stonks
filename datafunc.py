@@ -427,3 +427,7 @@ def get_ma_order(df, mas, strict=True, bearish=True):
         return df[[f'madom{i}' for i in range(len(mas)-1)]].all(axis=1)
     else:
         return df[[f'madom{i}' for i in range(len(mas)-1)]].sum(axis=1)
+
+
+def format_timedelta(td):
+    return str(round((td).total_seconds(), 2))
