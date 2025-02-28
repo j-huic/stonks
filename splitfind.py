@@ -1,24 +1,26 @@
 import pickle
-from datafunc import *
-from functions import *
 import numpy as np
 import os
+import sys
+from datafunc import *
+from functions import *
 from colorama import init, Fore, Style
 
 db_uri = os.getenv('DB_URI_SHORT')
+start_date = input('Input start date:\n')
+end_date = input('Input end date:\n')
 
-with open('recent_splits.pkl', 'rb') as file:
-    splits = pickle.load(file)
+if 'fresh' in sys.argv:
+    splits = clean_splits(get_splits(from_date=start_date, to_date=end_date))
+else:
+    with open('recent_splits.pkl', 'rb') as file:
+        allsplits = pickle.load(file)
+    splits = allsplits[allsplits['date'].between(start_date, end_date)]
 
-jan = splits[splits['date'].between('2024-08-30', '2024-08-30')]
-jantickers = jan['ticker'].unique()
-
+tickers = splits['ticker'].unique()
 cols = ['date', 'ticker', 'open', 'close', 'high', 'low', 'volume']
-df = get_stocks(jantickers, from_date='2024-01-01', db_uri=db_uri, cols=cols) 
+df = get_stocks(tickers, from_date='2024-01-01', db_uri=db_uri, cols=cols) 
 df['return'] = df.groupby('ticker')['close'].pct_change() + 1
-
-print(f'{len(df.ticker.unique())} in df')
-print(f'{len(jan.ticker.unique())} in jan')
 
 splitprob = []
 bad = []
@@ -28,7 +30,7 @@ errortickers = []
 error_messages = []
 init()
 
-for i, row in jan.iterrows():
+for i, row in splits.iterrows():
     if row['ticker'] not in df.ticker.unique():
         continue
 
@@ -55,7 +57,7 @@ for i, row in jan.iterrows():
             print(stockdf.loc[index-1: index+1])
         else:
             try:
-                print(stockdf.loc[index-5: index+5])
+                print(stockdf.loc[index-4: index+4])
             except:
                 print(stockdf.loc[index-1: index])
 
@@ -71,7 +73,7 @@ print(f'{errors} errors')
 print(f'{sum(np.array(splitprob) == 1)} certain splits')
 print(f'{sum(np.array(splitprob) == 0)} certain nonsplits')
 print(f'{np.sum([1 for item in splitprob if item is None])} aborts')
-print(f'out of {jan.shape[0]} splits and {len(df.ticker.unique())} stocks')
+print(f'out of {splits.shape[0]} splits and {len(df.ticker.unique())} stocks')
 print(f'bad tickers: {bad}')
 print(f'None grade tickers: {questionmark}')
 print(f'Encountered errors on tickers: {errortickers}')
