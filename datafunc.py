@@ -381,6 +381,8 @@ def validate_split(ratio, ret):
             grade = 0.25
         elif diff > 1:
             grade = 0
+    elif (ratio < 0.6) & (ret > 0.9):
+        grade = 0
     elif ratio < 0.8:
         if diff < 0.1:
             grade = 1
