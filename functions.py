@@ -407,12 +407,13 @@ def get_splits(output='json', **kwargs):
     return pd.DataFrame(output)
 
 
-def get_stocks(tickers, from_date, all_cols=False, db_uri=None):
+def get_stocks(tickers, from_date, cols=['date', 'ticker', 'close'], db_uri=None):
     if db_uri is None:
         conn = sqlite3.connect('main.db')
     else:
         conn = sqlite3.connect(db_uri)
-    columns = '*' if all_cols else 'date, ticker, close'
+
+    columns = ', '.join(cols) 
     sql_tickers = ', '.join([f"'{t}'" for t in tickers])
 
     query = f'''
@@ -491,13 +492,6 @@ def get_stock_only_tickers(tickers=None, apikey=None, params=None):
     return output
 
 
-def adjust_presplit_price(df, ticker, ratio, cols=['close']):
-    for col in cols:
-        df.loc[df['ticker'] == ticker, col] *= ratio
-
-    return df
-
-
 def adjust_presplit_price(df, ticker, ratio, cols=['close'], invcols=None):
     for col in cols:
         df.loc[df['ticker'] == ticker, col] *= ratio
@@ -509,19 +503,45 @@ def adjust_presplit_price(df, ticker, ratio, cols=['close'], invcols=None):
     return df
 
 
-def adjust_presplit_price_db(conn, ticker, ratio):
+def adjust_presplit_price_db(conn, ticker, ratio, date=None):
     cursor = conn.cursor()
     query = f'''
         UPDATE stocks
         SET
-            volume_weighted = volume_weighted * ?
-            open = open * ?
-            close = close * ?
-            high = high * ?
-            low = low * ?
+            volume_weighted = volume_weighted * ?,
+            open = open * ?,
+            close = close * ?,
+            high = high * ?,
+            low = low * ?,
             volume = volume / ?
         WHERE ticker = ?
     '''
     params = (ratio,) * 6 + (ticker,)
-    cursor.execute(query, params)
+
+    if date is not None:
+        query += ' AND date < ?'
+        params = params + (date,)
+
+    cursor.execute(query, tuple(params))
     conn.commit()
+
+
+def add_log(message, filename='info.log', verbose=False):
+    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    with open(filename, 'a') as file:
+        file.write(f'[{timestamp}]: {message}\n')
+
+    if verbose:
+        print(message + '\n')
+
+
+def get_all_tickers(db_uri=None, table='stocks'):
+    if db_uri is None:
+        db_uri = os.getenv('DB_URI_SHORT')
+
+    conn = sqlite3.connect(db_uri)
+    cursor = conn.cursor()
+    response = cursor.execute(f'SELECT DISTINCT(ticker) from {table}').fetchall()
+    
+    return [item[0] for item in response]
+
