@@ -317,21 +317,19 @@ def add_score(df, vars, weights=None, method='linear'):
     return score
 
 
-def clean_splits(allsplits, startDate=None, endDate=None, cols=None):
+def clean_splits(allsplits, from_date=None, to_date=None, cols=None, trim=False):
     if cols is None:
         cols = ['execution_date', 'split_from', 'split_to', 'ticker']
-    if startDate is None:
-        startDate = '1977-01-01'
-    if endDate is None:
-        endDate = datetime.now().strftime('%Y-%m-%d')
-
-    relsplits = allsplits[
-        (allsplits['execution_date'] > startDate) &
-        (allsplits['execution_date'] < endDate)
-    ]
-
-    output = relsplits[cols]
+    output = allsplits[cols].copy()
     output.columns = ['date', 'from', 'to', 'ticker']
+
+    if trim:
+        if from_date is None:
+            from_date = '2015-01-01'
+        if to_date is None:
+            to_date = datetime.now().strftime('%Y-%m-%d')
+
+        output = output[output['date'].between(from_date, to_date)]
 
     return output
 
