@@ -12,5 +12,6 @@ date = input("Enter date:\n")
 adjust_presplit_price_db(conn, ticker, ratio, date) 
 
 msg = f'Adjusted split for {ticker} on {date} with ratio {ratio}'
-add_log(msg, verbose=True)
+add_log(msg)
+print(msg)
 

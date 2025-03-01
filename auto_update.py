@@ -16,7 +16,7 @@ def main():
             filename=log_file,
             level=logging.INFO,
             datefmt='%Y-%m-%d %H:%M:%S',
-            format='%[(asctime)s] (%(levelname)s): %(message)s')
+            format='[%(asctime)s] (%(levelname)s): %(message)s')
             
     try: 
         # db conn
