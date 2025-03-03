@@ -77,7 +77,7 @@ def checkmissing(file='all_dailies.csv', dir='day_aggs'):
     return output
 
 
-def datefromfilename(filename, datetime=False):
+def date_from_filename_(filename, datetime=False):
     items = filename.split('/')
     lastitem = items[-1]
     datestring = lastitem.split('.')[0]
@@ -251,12 +251,16 @@ def file_request_print(n_files, timedelta):
             )
 
 
-def date_from_timestamp(timestamp):
-    return datetime.fromtimestamp(timestamp / 1000).strftime('%Y-%m-%d')
+def date_from_timestamp(timestamp, intraday=False):
+    datetime = datetime.fromtimestamp(timestamp / 1000)
+    if not intraday:
+        return datetime.strftime('%Y-%m-%d')
+    else:
+        return datetime.strftime('%Y-%m-%d %H:%M')
 
 
-def timestamp_to_date(timestamp):
-    return datetime.fromtimestamp(timestamp / 1000).strftime('%Y-%m-%d')
+def timestamp_to_date(timestamp, intraday=False):
+    return date_from_timestamp(timestamp, intraday)
 
 
 def timestamp_from_date(datestring):

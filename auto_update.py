@@ -1,5 +1,4 @@
 import sys
-import pandas as pd
 import sqlite3
 import logging
 import os

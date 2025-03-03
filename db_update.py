@@ -31,7 +31,7 @@ elif len(missingdates) == 1:
 else:
     print(f'{len(missingdates)} missing dates between {missingdates[0]} and {missingdates[-1]}')
 
-proceed = input('Proceed? (y/n)')
+proceed = input('Proceed? (y/n)\n')
 if proceed.lower() != 'y':
     print('Exiting.')
     sys.exit()
@@ -54,7 +54,7 @@ activetickers = get_all_tickers(conn=conn, onlyactive=True)
 inboth = in_both(splits.ticker.unique(), activetickers)
 print(f'{len(inboth)} splits since last update')
 
-for _, row in splits.iterrows():
+for _, row in tqdm(splits.iterrows()):
     ratio = row['from'] / row['to']
     ticker = row['ticker']
     date = row['date']
