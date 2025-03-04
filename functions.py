@@ -252,11 +252,11 @@ def file_request_print(n_files, timedelta):
 
 
 def date_from_timestamp(timestamp, intraday=False):
-    datetime = datetime.fromtimestamp(timestamp / 1000)
+    dt = datetime.fromtimestamp(timestamp / 1000)
     if not intraday:
-        return datetime.strftime('%Y-%m-%d')
+        return dt.strftime('%Y-%m-%d')
     else:
-        return datetime.strftime('%Y-%m-%d %H:%M')
+        return dt.strftime('%Y-%m-%d %H:%M')
 
 
 def timestamp_to_date(timestamp, intraday=False):
@@ -563,3 +563,33 @@ def get_all_tickers(db_uri=None, conn=None, table='stocks', onlyactive=False):
     
     return [item[0] for item in response]
 
+
+def get_intraday(ticker, timespan, multiplier, from_date, to_date):
+    if to_date is None:
+       to_date = datetime.now().strftime('%Y-%m-%d')
+
+    url = (
+        f'v2/aggs/ticker/{ticker}/range/{multiplier}/{timespan}/'
+        f'{from_date}/{to_date}'
+        )
+    
+    output = []
+    response = make_request(url)
+    output.extend(response['results'])
+
+    while('next_url' in response.keys()):
+        response = make_request(response['next_url'])
+        output.extend(response['results'])
+
+    return pd.DataFrame(output)
+
+
+def clean_results(df, cols=None, intraday=False):
+    if cols is None:
+        cols = ['date', 'close']
+        
+    df['date'] = df['t'].apply(lambda x: date_from_timestamp(x, intraday))
+    df.columns = ['volume', 'vw', 'open', 'close', 'high', 
+                  'low', 'timestamp', 'transactions', 'date']
+                  
+    return df[cols].copy()
