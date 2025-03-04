@@ -398,12 +398,30 @@ def make_request(base_url, output='json', apikey=None, **kwargs):
         return requests.get(url)
 
 
+def make_request_full(url, limit=1000, **kwargs):
+    output = []
+    response = make_request(url, limit=min(limit, 1000), **kwargs)
+    output.extend(response['results'])
+
+    if limit <= 1000:
+        return pd.DataFrame(output)
+    else:
+        remaining = limit - 1000
+
+        while 'next_url' in response.keys() and remaining > 0:
+            print(remaining)
+            response = make_request(response['next_url'], limit=min(remaining, 1000), **kwargs)
+            output.extend(response['results'])
+            remaining -= 1000
+
+    return pd.DataFrame(output)
+
 def get_splits(output='json', **kwargs):
     output = []
     response = make_request('v3/reference/splits', **kwargs, limit=1000)
     output.extend(response['results'])
 
-    while ('next_url' in response.keys()):
+    while 'next_url' in response.keys():
         response = make_request(response['next_url'])
         output.extend(response['results'])
 
