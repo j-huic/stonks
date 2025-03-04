@@ -77,7 +77,7 @@ def checkmissing(file='all_dailies.csv', dir='day_aggs'):
     return output
 
 
-def datefromfilename(filename, datetime=False):
+def date_from_filename_(filename, datetime=False):
     items = filename.split('/')
     lastitem = items[-1]
     datestring = lastitem.split('.')[0]
@@ -251,12 +251,16 @@ def file_request_print(n_files, timedelta):
             )
 
 
-def date_from_timestamp(timestamp):
-    return datetime.fromtimestamp(timestamp / 1000).strftime('%Y-%m-%d')
+def date_from_timestamp(timestamp, intraday=False):
+    dt = datetime.fromtimestamp(timestamp / 1000)
+    if not intraday:
+        return dt.strftime('%Y-%m-%d')
+    else:
+        return dt.strftime('%Y-%m-%d %H:%M')
 
 
-def timestamp_to_date(timestamp):
-    return datetime.fromtimestamp(timestamp / 1000).strftime('%Y-%m-%d')
+def timestamp_to_date(timestamp, intraday=False):
+    return date_from_timestamp(timestamp, intraday)
 
 
 def timestamp_from_date(datestring):
@@ -577,3 +581,33 @@ def get_all_tickers(db_uri=None, conn=None, table='stocks', onlyactive=False):
     
     return [item[0] for item in response]
 
+
+def get_intraday(ticker, timespan, multiplier, from_date, to_date):
+    if to_date is None:
+       to_date = datetime.now().strftime('%Y-%m-%d')
+
+    url = (
+        f'v2/aggs/ticker/{ticker}/range/{multiplier}/{timespan}/'
+        f'{from_date}/{to_date}'
+        )
+    
+    output = []
+    response = make_request(url)
+    output.extend(response['results'])
+
+    while('next_url' in response.keys()):
+        response = make_request(response['next_url'])
+        output.extend(response['results'])
+
+    return pd.DataFrame(output)
+
+
+def clean_results(df, cols=None, intraday=False):
+    if cols is None:
+        cols = ['date', 'close']
+        
+    df['date'] = df['t'].apply(lambda x: date_from_timestamp(x, intraday))
+    df.columns = ['volume', 'vw', 'open', 'close', 'high', 
+                  'low', 'timestamp', 'transactions', 'date']
+                  
+    return df[cols].copy()

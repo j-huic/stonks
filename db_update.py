@@ -2,6 +2,7 @@ import sys
 import pandas as pd
 import sqlite3
 from functions import *
+from datafunc import *
 from datetime import datetime
 import os
 
@@ -19,57 +20,51 @@ if 'deep' in args:
     trading_days = get_trading_days(from_date=min(dates))[1:]
     missingdates = missingdates(dates, trading_days)
 else:
-    last_timestamp = pd.read_sql_query(f'SELECT MAX(timestamp) FROM {tablename}', conn).iloc[0,0]
-    last_date = date_from_timestamp(last_timestamp)
+    last_date = get_max_value('date', conn)
     missingdates = get_trading_days(from_date=last_date)[1:]
 
 if len(missingdates) == 0:
         print('No missing dates')
-        after = datetime.now()
-        print('Total time elapsed: ' + str(round((after - before).total_seconds(), 2)) + ' seconds')
         sys.exit()
 elif len(missingdates) == 1:
-    print(f'There is 1 missing date at {missingdates[0]}')
+    print(f'1 missing date at {missingdates[0]}')
 else:
-    print(f'There are {len(missingdates)} missing dates between {missingdates[0]} and {missingdates[-1]}')
+    print(f'{len(missingdates)} missing dates between {missingdates[0]} and {missingdates[-1]}')
 
-# checking for scattered dates (indicative of missing data)
-if date_separation(missingdates) > 7:
-    print('NOTE: Missing dates are far apart: ', missingdates)
-
-proceed = input('Do you wish to proceed? (y/n)')
+proceed = input('Proceed? (y/n)\n')
 if proceed.lower() != 'y':
     print('Exiting.')
     sys.exit()
 
-if len(missingdates) > 50:
-    days = int(input('How many days to download: '))
-else:
-    days = len(missingdates)
-
-# missing data into pandas dataframe
-new_data = datelist_to_df_parallel(missingdates[:days], json=False, max_workers=5)
+new_data = datelist_to_df_parallel(missingdates, json=False, max_workers=5)
 
 if new_data is None:
-    print('No new data')
+    print(f'Data for {missingdates} not available')
     sys.exit()
 
 # new date column, align colnames, and append
 new_data['date'] = new_data['t'].apply(date_from_timestamp)
 new_data.columns = get_table_colnames(table=tablename, database=db_uri)
-
+dl_dates = new_data['date'].unique()
 print('Updating Database...')
-new_data.to_sql(tablename, conn, if_exists='append', index=False)
 
 # # check for splits
-# splits = get_splits(from_date=missingdates[0], to_date=missingdates[:-1])
-# print(f'There have been {splits.shape[0]} splits since last update')
-# print('Adjusting for splits in database...')
-# for index, row in splits.iterrows():
-#     ratio = row['split_from'] / row['split_to']
-#     adjust_presplit_price_db(conn, row['ticker'], ratio)
+splits = clean_splits(get_splits(from_date=dl_dates.min(), to_date=dl_dates.max()))
+activetickers = get_all_tickers(conn=conn, onlyactive=True)
+inboth = in_both(splits.ticker.unique(), activetickers)
+print(f'{len(inboth)} splits since last update')
+
+for _, row in tqdm(splits.iterrows()):
+    ratio = row['from'] / row['to']
+    ticker = row['ticker']
+    date = row['date']
+
+    if ticker not in activetickers:
+        adjust_presplit_price_db(conn, ticker, ratio, date)
+
 #
 
+new_data.to_sql(tablename, conn, if_exists='append', index=False)
 
 after = datetime.now()
 print('Total time elapsed: ' + str(round((after - before).total_seconds(), 2)) + ' seconds')
