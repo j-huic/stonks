@@ -413,7 +413,6 @@ def make_request_full(url, limit=1000, **kwargs):
         remaining = limit - 1000
 
         while 'next_url' in response.keys() and remaining > 0:
-            print(remaining)
             response = make_request(response['next_url'], limit=min(remaining, 1000), **kwargs)
             output.extend(response['results'])
             remaining -= 1000
@@ -611,3 +610,4 @@ def clean_results(df, cols=None, intraday=False):
                   'low', 'timestamp', 'transactions', 'date']
                   
     return df[cols].copy()
+
