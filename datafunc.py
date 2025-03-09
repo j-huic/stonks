@@ -431,3 +431,62 @@ def get_ma_order(df, mas, strict=True, bearish=True):
 
 def format_timedelta(td):
     return str(round((td).total_seconds(), 2))
+
+
+def plt_bicolor(vals, colors):
+    plt.plot(vals, color="tab:blue")
+    plt.plot(np.where(colors==True, vals, None), color="tab:orange")
+    plt.show()
+
+
+def strat(df, n):
+    df = df.reset_index().copy()
+    padding = [False for _ in range(n-1)]
+    positions = []
+    enter = False
+
+    for i in range(df.shape[0]-n+1):
+        window = df.iloc[i:i+n]
+
+        if not enter:
+            if window['incondition'].sum() == 4:
+                enter = True
+        else:
+            if window['outcondition'].values[-1]:
+                enter = False
+
+        positions.append(enter)
+
+    return np.array(padding + positions)
+
+
+def ret_from_pos(aret, bret, pos, weights=(0.9,0.1)):
+    w1 = weights[0]
+    w2 = weights[1]
+
+    aw = [w1 if item else 1 for item in pos]
+    bw = [w2 if item else 0 for item in pos]
+
+    a_tot_ret = np.array(aw) * aret
+    b_tot_ret = np.array(bw) * bret
+    totret = a_tot_ret + b_tot_ret
+
+    return totret.values[1:]
+
+
+def df_to_strat_ret(df, lower, upper, weights=(0.9, 0.1)):
+    df = df.reset_index(drop=True).copy()
+
+    df['incondition'] = df['uvix'] < lower
+    df['outcondition'] = df['uvix'] > upper
+
+    pos = strat(df, 4)
+    spret = df['spy'].pct_change() + 1
+    vret = df['uvix'].pct_change() + 1
+
+    ret = ret_from_pos(spret, vret, pos, weights=weights)
+
+    return ret
+
+
+
